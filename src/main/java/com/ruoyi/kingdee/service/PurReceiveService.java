@@ -3,6 +3,20 @@ package com.ruoyi.kingdee.service;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.constant.PurReceiveSchema;
 import com.ruoyi.kingdee.constant.PurReceiveSchema.TableDef;
+import com.ruoyi.kingdee.domain.BillCandidate;
+import com.ruoyi.kingdee.domain.CgEntryAttachment;
+import com.ruoyi.kingdee.domain.CgShEntryAttach;
+import com.ruoyi.kingdee.domain.PurRecBill;
+import com.ruoyi.kingdee.domain.PurRecBillEntry;
+import com.ruoyi.kingdee.domain.PurRecBillEntryL;
+import com.ruoyi.kingdee.domain.PurRecBillEntryLk;
+import com.ruoyi.kingdee.domain.PurRecBillEntryR;
+import com.ruoyi.kingdee.domain.PurRecBillF;
+import com.ruoyi.kingdee.domain.PurRecBillL;
+import com.ruoyi.kingdee.domain.PurRecBillLk;
+import com.ruoyi.kingdee.domain.PurRecBillTc;
+import com.ruoyi.kingdee.domain.PurRecBillWb;
+import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import com.ruoyi.kingdee.mapper.PurReceiveMapper;
 import com.ruoyi.kingdee.util.RowUtils;
 import org.apache.ibatis.session.RowBounds;
@@ -25,7 +39,7 @@ import java.util.function.BiFunction;
 /**
  * 按文档给出的三个关联键逐层取数并组装完整的收货单档案：
  * fid（主表→明细） → fentryid（明细→扩展/箱唛/附件清单） → fdetailid（附件清单→附件表）。
- * 各表分开查询，避免一对多 JOIN 造成明细行重复展开。
+ * 所有查询结果均为 domain 下的 entity，各表分开查询，避免一对多 JOIN 造成明细行重复展开。
  */
 @Service
 public class PurReceiveService {
@@ -57,17 +71,17 @@ public class PurReceiveService {
     }
 
     /** 单号联想 / 模糊查询。 */
-    public List<Map<String, Object>> suggest(String keyword) {
+    public List<BillCandidate> suggest(String keyword) {
         return suggest(keyword, new ArrayList<String>());
     }
 
-    private List<Map<String, Object>> suggest(String keyword, List<String> warnings) {
+    private List<BillCandidate> suggest(String keyword, List<String> warnings) {
         String value = trimToNull(keyword);
         if (value == null) {
             return Collections.emptyList();
         }
         validateBillNo(value);
-        List<Map<String, Object>> rows = safe(PurReceiveSchema.BILL,
+        List<PurRecBill> rows = safe(PurReceiveSchema.BILL,
                 () -> mapper.selectBillsByBillNoFuzzy("%" + value + "%", bounds(properties.getMaxCandidates())),
                 warnings);
         return candidatesFromRows(rows);
@@ -101,7 +115,7 @@ public class PurReceiveService {
             if (no == null) {
                 throw new IllegalArgumentException("请输入用于模糊匹配的单据编号");
             }
-            List<Map<String, Object>> candidates = suggest(no, warnings);
+            List<BillCandidate> candidates = suggest(no, warnings);
             result.put("candidates", candidates);
             result.put("message", candidates.isEmpty()
                     ? "没有匹配的单据编号"
@@ -113,7 +127,7 @@ public class PurReceiveService {
             throw new IllegalArgumentException("请输入采购收货单号");
         }
 
-        List<Map<String, Object>> bills = fidParam != null
+        List<PurRecBill> bills = fidParam != null
                 ? safe(PurReceiveSchema.BILL, () -> mapper.selectBillsByFid(fidParam, bounds(1)), warnings)
                 : safe(PurReceiveSchema.BILL,
                 () -> mapper.selectBillsByBillNo(no, bounds(properties.getMaxCandidates())), warnings);
@@ -135,66 +149,66 @@ public class PurReceiveService {
         return finish(result, start, warnings);
     }
 
-    private void buildDossier(Map<String, Object> bill, Map<String, Object> result, List<String> warnings) {
-        final Object fid = bill.get("fid");
-        Map<String, List<Map<String, Object>>> raw = new LinkedHashMap<>();
-        for (TableDef def : PurReceiveSchema.tableDefs()) {
-            raw.put(def.getName(), Collections.<Map<String, Object>>emptyList());
-        }
+    private void buildDossier(PurRecBill bill, Map<String, Object> result, List<String> warnings) {
+        final Object fid = bill.getFid();
 
-        raw.put(PurReceiveSchema.BILL, Collections.singletonList(bill));
-        raw.put(PurReceiveSchema.BILL_L, safe(PurReceiveSchema.BILL_L, () -> mapper.selectBillL(fid, bounds()), warnings));
-        raw.put(PurReceiveSchema.BILL_LK, safe(PurReceiveSchema.BILL_LK, () -> mapper.selectBillLk(fid, bounds()), warnings));
-        raw.put(PurReceiveSchema.BILL_TC, safe(PurReceiveSchema.BILL_TC, () -> mapper.selectBillTc(fid, bounds()), warnings));
-        raw.put(PurReceiveSchema.BILL_WB, safe(PurReceiveSchema.BILL_WB, () -> mapper.selectBillWb(fid, bounds()), warnings));
-        raw.put(PurReceiveSchema.BILL_F, safe(PurReceiveSchema.BILL_F, () -> mapper.selectBillF(fid, bounds()), warnings));
+        List<PurRecBillL> billL = safe(PurReceiveSchema.BILL_L, () -> mapper.selectBillL(fid, bounds()), warnings);
+        List<PurRecBillLk> billLk = safe(PurReceiveSchema.BILL_LK, () -> mapper.selectBillLk(fid, bounds()), warnings);
+        List<PurRecBillTc> billTc = safe(PurReceiveSchema.BILL_TC, () -> mapper.selectBillTc(fid, bounds()), warnings);
+        List<PurRecBillWb> billWb = safe(PurReceiveSchema.BILL_WB, () -> mapper.selectBillWb(fid, bounds()), warnings);
+        List<PurRecBillF> billF = safe(PurReceiveSchema.BILL_F, () -> mapper.selectBillF(fid, bounds()), warnings);
+        List<PurRecBillEntry> entries = safe(PurReceiveSchema.ENTRY, () -> mapper.selectEntries(fid, bounds()), warnings);
 
-        List<Map<String, Object>> entries = safe(PurReceiveSchema.ENTRY,
-                () -> mapper.selectEntries(fid, bounds()), warnings);
-        raw.put(PurReceiveSchema.ENTRY, entries);
-        List<Object> entryIds = RowUtils.distinctValues(entries, "fentryid");
+        List<Object> entryIds = RowUtils.distinctValues(entries, PurRecBillEntry::getFentryid);
+        List<PurRecBillEntryL> entryL = queryByKeys(PurReceiveSchema.ENTRY_L, entryIds, mapper::selectEntryL, warnings);
+        List<PurRecBillEntryR> entryR = queryByKeys(PurReceiveSchema.ENTRY_R, entryIds, mapper::selectEntryR, warnings);
+        List<PurRecBillEntryLk> entryLk = queryByKeys(PurReceiveSchema.ENTRY_LK, entryIds, mapper::selectEntryLk, warnings);
+        List<ReceivingBoxEntry> boxes = queryByKeys(PurReceiveSchema.BOX, entryIds, mapper::selectBoxes, warnings);
+        List<CgShEntryAttach> attach = queryByKeys(PurReceiveSchema.ATTACH, entryIds, mapper::selectAttachList, warnings);
 
-        raw.put(PurReceiveSchema.ENTRY_L, queryByKeys(PurReceiveSchema.ENTRY_L, entryIds, mapper::selectEntryL, warnings));
-        raw.put(PurReceiveSchema.ENTRY_R, queryByKeys(PurReceiveSchema.ENTRY_R, entryIds, mapper::selectEntryR, warnings));
-        raw.put(PurReceiveSchema.ENTRY_LK, queryByKeys(PurReceiveSchema.ENTRY_LK, entryIds, mapper::selectEntryLk, warnings));
-        raw.put(PurReceiveSchema.BOX, queryByKeys(PurReceiveSchema.BOX, entryIds, mapper::selectBoxes, warnings));
-        raw.put(PurReceiveSchema.ATTACH, queryByKeys(PurReceiveSchema.ATTACH, entryIds, mapper::selectAttachList, warnings));
-
-        List<Object> detailIds = RowUtils.distinctValues(raw.get(PurReceiveSchema.ATTACH), "fdetailid");
-        raw.put(PurReceiveSchema.ATTACH_FILE,
-                queryByKeys(PurReceiveSchema.ATTACH_FILE, detailIds, mapper::selectAttachFiles, warnings));
+        List<Object> detailIds = RowUtils.distinctValues(attach, CgShEntryAttach::getFdetailid);
+        List<CgEntryAttachment> attachFiles = queryByKeys(PurReceiveSchema.ATTACH_FILE, detailIds,
+                mapper::selectAttachFiles, warnings);
 
         Map<String, Object> tables = new LinkedHashMap<>();
+        putSection(tables, PurReceiveSchema.BILL, Collections.singletonList(bill), PurRecBill.class);
+        putSection(tables, PurReceiveSchema.BILL_L, billL, PurRecBillL.class);
+        putSection(tables, PurReceiveSchema.BILL_LK, billLk, PurRecBillLk.class);
+        putSection(tables, PurReceiveSchema.BILL_TC, billTc, PurRecBillTc.class);
+        putSection(tables, PurReceiveSchema.BILL_WB, billWb, PurRecBillWb.class);
+        putSection(tables, PurReceiveSchema.BILL_F, billF, PurRecBillF.class);
+        putSection(tables, PurReceiveSchema.ENTRY, entries, PurRecBillEntry.class);
+        putSection(tables, PurReceiveSchema.ENTRY_L, entryL, PurRecBillEntryL.class);
+        putSection(tables, PurReceiveSchema.ENTRY_R, entryR, PurRecBillEntryR.class);
+        putSection(tables, PurReceiveSchema.ENTRY_LK, entryLk, PurRecBillEntryLk.class);
+        putSection(tables, PurReceiveSchema.BOX, boxes, ReceivingBoxEntry.class);
+        putSection(tables, PurReceiveSchema.ATTACH, attach, CgShEntryAttach.class);
+        putSection(tables, PurReceiveSchema.ATTACH_FILE, attachFiles, CgEntryAttachment.class);
+
         int nonEmptyTableCount = 0;
-        for (TableDef def : PurReceiveSchema.tableDefs()) {
-            List<Map<String, Object>> rows = raw.getOrDefault(def.getName(), Collections.<Map<String, Object>>emptyList());
-            if (!rows.isEmpty()) {
+        for (Object value : tables.values()) {
+            Map<?, ?> section = (Map<?, ?>) value;
+            if ((Integer) section.get("count") > 0) {
                 nonEmptyTableCount++;
             }
-            Map<String, Object> section = def.toMap();
-            section.put("count", rows.size());
-            section.put("columns", RowUtils.columnsOf(rows));
-            section.put("rows", rows);
-            section.put("truncated", rows.size() >= properties.getMaxRowsPerTable());
-            tables.put(def.getName(), section);
         }
 
-        Map<String, List<Map<String, Object>>> entryLGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.ENTRY_L), "fentryid");
-        Map<String, List<Map<String, Object>>> entryRGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.ENTRY_R), "fentryid");
-        Map<String, List<Map<String, Object>>> entryLkGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.ENTRY_LK), "fentryid");
-        Map<String, List<Map<String, Object>>> boxGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.BOX), "fentryid");
-        Map<String, List<Map<String, Object>>> attachGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.ATTACH), "fentryid");
-        Map<String, List<Map<String, Object>>> fileGroup = RowUtils.groupBy(raw.get(PurReceiveSchema.ATTACH_FILE), "fdetailid");
+        Map<String, List<PurRecBillEntryL>> entryLGroup = RowUtils.groupBy(entryL, PurRecBillEntryL::getFentryid);
+        Map<String, List<PurRecBillEntryR>> entryRGroup = RowUtils.groupBy(entryR, PurRecBillEntryR::getFentryid);
+        Map<String, List<PurRecBillEntryLk>> entryLkGroup = RowUtils.groupBy(entryLk, PurRecBillEntryLk::getFentryid);
+        Map<String, List<ReceivingBoxEntry>> boxGroup = RowUtils.groupBy(boxes, ReceivingBoxEntry::getFentryid);
+        Map<String, List<CgShEntryAttach>> attachGroup = RowUtils.groupBy(attach, CgShEntryAttach::getFentryid);
+        Map<String, List<CgEntryAttachment>> fileGroup = RowUtils.groupBy(attachFiles, CgEntryAttachment::getFdetailid);
 
         List<Map<String, Object>> items = new ArrayList<>();
         int boxCount = 0;
         int attachCount = 0;
         int fileCount = 0;
-        for (Map<String, Object> entryRow : entries) {
-            String key = RowUtils.keyOf(entryRow.get("fentryid"));
+        for (PurRecBillEntry entryRow : entries) {
+            String key = RowUtils.keyOf(entryRow.getFentryid());
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("fentryid", key);
-            item.put("fseq", entryRow.get("fseq"));
+            item.put("fseq", entryRow.getFseq());
             item.put("row", entryRow);
 
             Map<String, Object> ext = new LinkedHashMap<>();
@@ -203,14 +217,14 @@ public class PurReceiveService {
             ext.put(PurReceiveSchema.ENTRY_LK, rowsOf(entryLkGroup, key));
             item.put("ext", ext);
 
-            List<Map<String, Object>> boxes = rowsOf(boxGroup, key);
-            item.put("boxes", boxes);
+            List<ReceivingBoxEntry> entryBoxes = rowsOf(boxGroup, key);
+            item.put("boxes", entryBoxes);
 
             List<Map<String, Object>> attachItems = new ArrayList<>();
             int entryFileCount = 0;
-            for (Map<String, Object> attachRow : rowsOf(attachGroup, key)) {
-                String detailKey = RowUtils.keyOf(attachRow.get("fdetailid"));
-                List<Map<String, Object>> files = rowsOf(fileGroup, detailKey);
+            for (CgShEntryAttach attachRow : rowsOf(attachGroup, key)) {
+                String detailKey = RowUtils.keyOf(attachRow.getFdetailid());
+                List<CgEntryAttachment> files = rowsOf(fileGroup, detailKey);
                 Map<String, Object> attachItem = new LinkedHashMap<>();
                 attachItem.put("fdetailid", detailKey);
                 attachItem.put("row", attachRow);
@@ -221,13 +235,13 @@ public class PurReceiveService {
             item.put("attachList", attachItems);
 
             Map<String, Object> stats = new LinkedHashMap<>();
-            stats.put("boxes", boxes.size());
+            stats.put("boxes", entryBoxes.size());
             stats.put("attachments", attachItems.size());
             stats.put("files", entryFileCount);
             item.put("stats", stats);
             items.add(item);
 
-            boxCount += boxes.size();
+            boxCount += entryBoxes.size();
             attachCount += attachItems.size();
             fileCount += entryFileCount;
         }
@@ -241,7 +255,7 @@ public class PurReceiveService {
         summary.put("nonEmptyTableCount", nonEmptyTableCount);
 
         result.put("found", true);
-        result.put("billNo", bill.get("fbillno"));
+        result.put("billNo", bill.getFbillno());
         result.put("fid", fid);
         result.put("bill", bill);
         result.put("tables", tables);
@@ -249,16 +263,29 @@ public class PurReceiveService {
         result.put("summary", summary);
     }
 
-    private List<Map<String, Object>> queryByKeys(String table, List<Object> ids,
-                                                  BiFunction<List<Object>, RowBounds, List<Map<String, Object>>> query,
-                                                  List<String> warnings) {
+    private <T> void putSection(Map<String, Object> tables, String tableName, List<T> rows, Class<T> entityType) {
+        TableDef def = PurReceiveSchema.tableDef(tableName);
+        Map<String, Object> section = def.toMap();
+        section.put("count", rows.size());
+        section.put("columns", RowUtils.columnsOf(entityType));
+        section.put("rows", rows);
+        section.put("truncated", rows.size() >= properties.getMaxRowsPerTable());
+        tables.put(def.getName(), section);
+    }
+
+    private <T> List<T> queryByKeys(String table, List<Object> ids,
+                                    BiFunction<List<Object>, RowBounds, List<T>> query,
+                                    List<String> warnings) {
         if (ids.isEmpty()) {
             return Collections.emptyList();
         }
-        List<Map<String, Object>> all = new ArrayList<>();
+        List<T> all = new ArrayList<>();
         for (List<Object> batch : RowUtils.partition(ids, properties.getInClauseBatchSize())) {
             try {
-                all.addAll(RowUtils.normalize(query.apply(batch, bounds())));
+                List<T> rows = query.apply(batch, bounds());
+                if (rows != null) {
+                    all.addAll(rows);
+                }
             } catch (DataAccessException e) {
                 warnings.add(rootMessage(table, e));
                 log.warn("表 {} 查询失败", table, e);
@@ -272,9 +299,10 @@ public class PurReceiveService {
         return all;
     }
 
-    private List<Map<String, Object>> safe(String table, SqlQuery query, List<String> warnings) {
+    private <T> List<T> safe(String table, SqlQuery<T> query, List<String> warnings) {
         try {
-            return RowUtils.normalize(query.execute());
+            List<T> rows = query.execute();
+            return rows == null ? Collections.<T>emptyList() : rows;
         } catch (DataAccessException e) {
             warnings.add(rootMessage(table, e));
             log.warn("表 {} 查询失败", table, e);
@@ -290,22 +318,20 @@ public class PurReceiveService {
         return "表 " + table + " 查询失败（可能不存在、字段名不同或无读取权限）：" + root.getMessage();
     }
 
-    private List<Map<String, Object>> rowsOf(Map<String, List<Map<String, Object>>> grouped, String key) {
-        return key == null ? Collections.<Map<String, Object>>emptyList()
-                : grouped.getOrDefault(key, Collections.<Map<String, Object>>emptyList());
+    private <T> List<T> rowsOf(Map<String, List<T>> grouped, String key) {
+        return key == null ? Collections.<T>emptyList()
+                : grouped.getOrDefault(key, Collections.<T>emptyList());
     }
 
-    private List<Map<String, Object>> candidatesFromRows(List<Map<String, Object>> rows) {
-        List<Map<String, Object>> candidates = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> candidate = new LinkedHashMap<>();
-            Object fid = row.get("fid");
-            Object billNo = row.get("fbillno");
-            candidate.put("fid", fid);
-            candidate.put("billNo", billNo);
-            candidate.put("label", String.valueOf(billNo) + "（内码 " + String.valueOf(fid) + "）");
-            candidate.put("status", row.get("fstatus"));
-            candidate.put("bizDate", row.get("fbizdate"));
+    private List<BillCandidate> candidatesFromRows(List<PurRecBill> rows) {
+        List<BillCandidate> candidates = new ArrayList<>();
+        for (PurRecBill row : rows) {
+            BillCandidate candidate = new BillCandidate();
+            candidate.setFid(row.getFid());
+            candidate.setBillNo(row.getFbillno());
+            candidate.setLabel(String.valueOf(row.getFbillno()) + "（内码 " + String.valueOf(row.getFid()) + "）");
+            candidate.setStatus(row.getFstatus());
+            candidate.setBizDate(row.getFbizdate());
             candidates.add(candidate);
         }
         return candidates;
@@ -350,7 +376,7 @@ public class PurReceiveService {
     }
 
     @FunctionalInterface
-    private interface SqlQuery {
-        List<Map<String, Object>> execute();
+    private interface SqlQuery<T> {
+        List<T> execute();
     }
 }

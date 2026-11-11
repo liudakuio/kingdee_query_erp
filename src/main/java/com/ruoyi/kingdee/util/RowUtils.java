@@ -1,95 +1,44 @@
 package com.ruoyi.kingdee.util;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
-import java.sql.Clob;
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
-import java.time.temporal.Temporal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 /**
- * 动态列结果集工具：不同数据库返回的列名大小写、数值/时间类型不一致，这里统一成前端可直接渲染的形态。
+ * 实体结果集组装工具：关联键统一成字符串，并按 entity 类型提供稳定的列顺序。
+ * 数据库查询结果已由 MyBatis 映射为 entity，这里不再做 Map 行的键值归一化。
  */
 public final class RowUtils {
+
+    private static final Map<Class<?>, List<String>> COLUMN_CACHE = new ConcurrentHashMap<>();
 
     private RowUtils() {
     }
 
-    public static List<Map<String, Object>> normalize(List<Map<String, Object>> rows) {
-        if (rows == null || rows.isEmpty()) {
-            return Collections.emptyList();
+    /** entity 声明的字段即该表的列集合，保持声明顺序，供前端生成表头。 */
+    public static List<String> columnsOf(Class<?> entityType) {
+        List<String> cached = COLUMN_CACHE.get(entityType);
+        if (cached != null) {
+            return cached;
         }
-        List<Map<String, Object>> result = new ArrayList<>(rows.size());
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> normalized = new LinkedHashMap<>();
-            if (row != null) {
-                for (Map.Entry<String, Object> cell : row.entrySet()) {
-                    String column = cell.getKey() == null ? "unknown" : cell.getKey().toLowerCase(Locale.ROOT);
-                    normalized.put(column, normalizeValue(cell.getValue()));
-                }
+        List<String> columns = new ArrayList<>();
+        for (Field field : entityType.getDeclaredFields()) {
+            if (!Modifier.isStatic(field.getModifiers()) && !field.isSynthetic()) {
+                columns.add(field.getName());
             }
-            result.add(normalized);
         }
+        List<String> result = Collections.unmodifiableList(columns);
+        COLUMN_CACHE.putIfAbsent(entityType, result);
         return result;
-    }
-
-    public static Object normalizeValue(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof BigDecimal) {
-            return ((BigDecimal) value).stripTrailingZeros().toPlainString();
-        }
-        if (value instanceof Timestamp) {
-            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((Timestamp) value);
-        }
-        if (value instanceof java.sql.Date) {
-            return value.toString();
-        }
-        if (value instanceof java.util.Date) {
-            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format((java.util.Date) value);
-        }
-        if (value instanceof Temporal) {
-            return value.toString().replace('T', ' ');
-        }
-        if (value instanceof byte[]) {
-            return "[二进制数据 " + ((byte[]) value).length + " 字节]";
-        }
-        if (value instanceof Clob) {
-            return readClob((Clob) value);
-        }
-        if (value instanceof java.sql.Blob) {
-            return "[BLOB 数据]";
-        }
-        if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof Character) {
-            return value;
-        }
-        return String.valueOf(value);
-    }
-
-    private static String readClob(Clob clob) {
-        try {
-            long length = clob.length();
-            return length <= 0 ? "" : clob.getSubString(1, (int) Math.min(length, 2000));
-        } catch (Exception e) {
-            return "[CLOB 数据读取失败]";
-        }
-    }
-
-    /** 结果集所有行出现过的列，保持首次出现顺序。 */
-    public static List<String> columnsOf(List<Map<String, Object>> rows) {
-        Set<String> columns = new LinkedHashSet<>();
-        for (Map<String, Object> row : rows) {
-            columns.addAll(row.keySet());
-        }
-        return new ArrayList<>(columns);
     }
 
     /** 关联键统一转字符串，避免 BigDecimal(1001) 与 Long(1001) 分组不到一起。 */
@@ -122,15 +71,35 @@ public final class RowUtils {
         return trimmed;
     }
 
-    public static List<Object> distinctValues(List<Map<String, Object>> rows, String column) {
+    /** 取某列（getter）去重后的值，保持首次出现顺序。 */
+    public static <T> List<Object> distinctValues(List<T> rows, Function<T, ?> getter) {
         Set<Object> values = new LinkedHashSet<>();
-        for (Map<String, Object> row : rows) {
-            Object value = row.get(column);
+        if (rows == null || rows.isEmpty()) {
+            return new ArrayList<>(values);
+        }
+        for (T row : rows) {
+            Object value = getter.apply(row);
             if (value != null && !String.valueOf(value).trim().isEmpty()) {
                 values.add(value);
             }
         }
         return new ArrayList<>(values);
+    }
+
+    /** 按关联键（getter）把 entity 列表分组。 */
+    public static <T> Map<String, List<T>> groupBy(List<T> rows, Function<T, ?> getter) {
+        Map<String, List<T>> grouped = new LinkedHashMap<>();
+        if (rows == null || rows.isEmpty()) {
+            return grouped;
+        }
+        for (T row : rows) {
+            String key = keyOf(getter.apply(row));
+            if (key == null) {
+                continue;
+            }
+            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
+        }
+        return grouped;
     }
 
     public static <T> List<List<T>> partition(List<T> source, int size) {
@@ -143,17 +112,5 @@ public final class RowUtils {
             batches.add(new ArrayList<>(source.subList(i, Math.min(i + batchSize, source.size()))));
         }
         return batches;
-    }
-
-    public static Map<String, List<Map<String, Object>>> groupBy(List<Map<String, Object>> rows, String column) {
-        Map<String, List<Map<String, Object>>> grouped = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = keyOf(row.get(column));
-            if (key == null) {
-                continue;
-            }
-            grouped.computeIfAbsent(key, k -> new ArrayList<>()).add(row);
-        }
-        return grouped;
     }
 }

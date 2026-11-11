@@ -8,7 +8,7 @@ import java.util.Map;
 
 /**
  * 《金蝶采购收货单数据结构与关联关系》中的 13 张表 / 12 条关系 / 已确认字段字典。
- * 只描述关联键，不推测未知业务字段；其余字段通过 SELECT * 动态呈现。
+ * 只描述关联键，不推测未知业务字段；已确认字段由 domain 下各 entity 承载。
  */
 public final class PurReceiveSchema {
 
@@ -91,6 +91,16 @@ public final class PurReceiveSchema {
 
     public static List<TableDef> tableDefs() {
         return TABLE_DEFS;
+    }
+
+    /** 按表名取表定义，供 Service 生成各表的渲染分区。 */
+    public static TableDef tableDef(String name) {
+        for (TableDef def : TABLE_DEFS) {
+            if (def.getName().equals(name)) {
+                return def;
+            }
+        }
+        throw new IllegalArgumentException("未定义的表：" + name);
     }
 
     /** 文档第 3 节的 12 条关联关系。 */

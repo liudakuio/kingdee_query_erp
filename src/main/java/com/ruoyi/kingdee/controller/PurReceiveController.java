@@ -20,13 +20,17 @@ public class PurReceiveController {
         this.service = service;
     }
 
-    /** 表字典、字段字典和 12 条关联关系，前端用于生成动态列标题。 */
+    /**
+     * 表字典、字段字典和 12 条关联关系，前端用于生成动态列标题。
+     */
     @GetMapping("/meta")
     public AjaxResult meta() {
         return AjaxResult.success(service.meta());
     }
 
-    /** 单号联想 / 模糊匹配候选单据。 */
+    /**
+     * 单号联想 / 模糊匹配候选单据。
+     */
     @GetMapping("/list")
     public AjaxResult list(@RequestParam(name = "billNo", required = false) String billNo) {
         return AjaxResult.success(service.suggest(billNo));

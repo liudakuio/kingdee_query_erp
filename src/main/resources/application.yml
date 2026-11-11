@@ -19,7 +19,7 @@ spring:
 mybatis:
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
-    # SELECT * 返回 Map 时，值为 NULL 的列也要保留，保证每张表列集合稳定
+    # 结果集映射为 entity 时，值为 NULL 的列也调用 setter，保证字段状态一致
     call-setters-on-nulls: true
 
 kingdee:
