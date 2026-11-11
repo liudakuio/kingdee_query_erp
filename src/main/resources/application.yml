@@ -9,7 +9,7 @@ server:
 spring:
   # demo = 内置 H2 演示库（开箱即用）；kingdee = 真实金蝶数据库
   profiles:
-    active: demo
+    active: kingdee
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8
