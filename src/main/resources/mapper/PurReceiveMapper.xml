@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.kingdee.mapper.PurReceiveMapper">
+
+    <!-- 所有表名与列名均为固定字面量，用户输入只通过 #{} 绑定，杜绝 SQL 注入 -->
+
+    <select id="selectBillsByBillNo" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill WHERE fbillno = #{billNo}
+    </select>
+
+    <select id="selectBillsByBillNoFuzzy" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill
+        WHERE UPPER(fbillno) LIKE UPPER(#{pattern})
+        ORDER BY fbillno
+    </select>
+
+    <select id="selectBillsByFid" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill WHERE fid = #{fid}
+    </select>
+
+    <select id="selectBillL" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill_l WHERE fid = #{fid}
+    </select>
+
+    <select id="selectBillLk" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill_lk WHERE fid = #{fid}
+    </select>
+
+    <select id="selectBillTc" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill_tc WHERE fid = #{fid}
+    </select>
+
+    <select id="selectBillWb" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill_wb WHERE fid = #{fid}
+    </select>
+
+    <select id="selectBillF" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbill_f WHERE fid = #{fid}
+    </select>
+
+    <select id="selectEntries" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbillentry WHERE fid = #{fid} ORDER BY fseq, fentryid
+    </select>
+
+    <select id="selectEntryL" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbillentry_l
+        WHERE fentryid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectEntryR" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbillentry_r
+        WHERE fentryid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectEntryLk" resultType="java.util.LinkedHashMap">
+        SELECT * FROM t_im_purrecbillentry_lk
+        WHERE fentryid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectBoxes" resultType="java.util.LinkedHashMap">
+        SELECT * FROM tk_usp_receivingboxentry
+        WHERE fentryid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectAttachList" resultType="java.util.LinkedHashMap">
+        SELECT * FROM tk_usp_cgshentryattach
+        WHERE fentryid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+    <select id="selectAttachFiles" resultType="java.util.LinkedHashMap">
+        SELECT * FROM tk_usp_cgentryattachment
+        WHERE fdetailid IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+    </select>
+
+</mapper>

@@ -1,0 +1,10 @@
+html, body, #app { height: 100%; }
+body { margin: 0; background: #f4f6f9; color: #303133; }
+* { box-sizing: border-box; }
+.app-container { padding: 4px 2px 24px; }
+.block-gap { margin-top: 14px !important; }
+.cell-empty { color: #c0c4cc; }
+code { font-family: Consolas, Monaco, monospace; background: #f0f3f8; color: #5b6b8c; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #c9d2de; border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }

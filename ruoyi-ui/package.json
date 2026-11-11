@@ -1,0 +1,26 @@
+{
+  "name": "ruoyi-ui-kingdee-receive",
+  "version": "1.0.0",
+  "private": true,
+  "description": "若依风格前端：金蝶 ERP 采购收货单关联数据查询",
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build"
+  },
+  "dependencies": {
+    "axios": "0.27.2",
+    "element-ui": "2.15.14",
+    "vue": "2.6.14",
+    "vue-router": "3.5.3"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "4.5.19",
+    "@vue/cli-service": "4.5.19",
+    "vue-template-compiler": "2.6.14"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}

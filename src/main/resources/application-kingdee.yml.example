@@ -1,0 +1,44 @@
+# ============================================
+# application-kingdee.yml 配置模板（示例文件）
+# ============================================
+# 用途：金蝶数据库对接配置模板，供团队成员复制后填写本地真实配置
+# 使用方法：
+#   1. 复制本文件为同目录下的 application-kingdee.yml
+#      PowerShell: Copy-Item src/main/resources/application-kingdee.yml.example src/main/resources/application-kingdee.yml
+#   2. 将下方 CHANGE_ME 占位符替换为真实值（账号、密码、地址等）
+#   3. application-kingdee.yml 已被 .gitignore 忽略，不会被提交
+# 启动方式：
+#   mvn "-Dmaven.resolver.transport=wagon" spring-boot:run -Dspring-boot.run.profiles=kingdee
+# 注意事项：
+#   - 建议使用只读账号连接金蝶正式库，避免误写
+#   - 确认数据库类型、库名、表/字段名大小写与实际部署一致
+
+spring:
+  datasource:
+    # PostgreSQL（金蝶 EAS 常见 PostgreSQL 部署）
+    driver-class-name: org.postgresql.Driver
+    # 金蝶数据库地址、端口、库名，按实际环境修改
+    url: jdbc:postgresql://127.0.0.1:5432/CHANGE_ME_DB_NAME
+    # 只读查询账号，由 DBA 提供
+    username: CHANGE_ME_USERNAME
+    password: CHANGE_ME_PASSWORD
+    hikari:
+      # 强制只读连接池
+      read-only: true
+      # 连接池大小，按需调整，默认较小避免对金蝶库造成压力
+      maximum-pool-size: 5
+  sql:
+    init:
+      # 真实金蝶库绝不执行演示建表脚本，保持 never
+      mode: never
+
+# ============================================
+# 其他数据库类型示例（如需使用请先向 pom.xml 添加对应 JDBC 驱动依赖）
+# ============================================
+# Oracle（需添加 com.oracle.database.jdbc:ojdbc8 依赖）：
+#   driver-class-name: oracle.jdbc.OracleDriver
+#   url: jdbc:oracle:thin:@//127.0.0.1:1521/ORCL
+#
+# SQL Server（需添加 com.microsoft.sqlserver:mssql-jdbc 依赖）：
+#   driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+#   url: jdbc:sqlserver://127.0.0.1:1433;databaseName=KingdeeEAS

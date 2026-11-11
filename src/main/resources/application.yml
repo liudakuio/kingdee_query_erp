@@ -1,0 +1,32 @@
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+spring:
+  # demo = 内置 H2 演示库（开箱即用）；kingdee = 真实金蝶数据库
+  profiles:
+    active: demo
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  mvc:
+    throw-exception-if-no-handler-found: false
+
+mybatis:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    # SELECT * 返回 Map 时，值为 NULL 的列也要保留，保证每张表列集合稳定
+    call-setters-on-nulls: true
+
+kingdee:
+  query:
+    # 单张表最多返回行数（防止自定义子表数据量过大拖垮页面）
+    max-rows-per-table: 2000
+    # 模糊匹配最多返回的单据数量
+    max-candidates: 50
+    # IN 条件分批大小（Oracle IN 上限 1000）
+    in-clause-batch-size: 500
