@@ -37,6 +37,25 @@
           <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
           <el-button icon="el-icon-download" :disabled="!canExport" @click="exportJson">导出结果</el-button>
         </el-form-item>
+        <el-form-item label="导出 Excel">
+          <el-select v-model="exportTable" size="small" style="width: 260px" placeholder="选择导出范围">
+            <el-option label="全部表（13 张，每张一个工作表）" value="all" />
+            <el-option
+              v-for="t in tableDefs"
+              :key="t.name"
+              :label="t.label + ' · ' + t.name"
+              :value="t.name"
+            />
+          </el-select>
+          <el-button
+            type="success"
+            icon="el-icon-document"
+            :disabled="!canExport"
+            :loading="exporting"
+            style="margin-left: 8px"
+            @click="exportExcel"
+          >导出 Excel</el-button>
+        </el-form-item>
       </el-form>
       <div class="demo-line">
         <span>演示单号：</span>
@@ -148,7 +167,7 @@
                       <el-collapse v-if="scope.row.attachList.length">
                         <el-collapse-item v-for="(a, idx) in scope.row.attachList" :key="a.fdetailid || idx" :name="String(idx)">
                           <template slot="title">
-                            <span class="attach-title">{{ a.row.fattachname || ('附件 ' + (idx + 1)) }}</span>
+                            <span class="attach-title">{{ a.row.fk_usp_attachname || a.row.fattachname || ('附件 ' + (idx + 1)) }}</span>
                             <el-tag size="mini" type="info" effect="plain">{{ a.files.length }} 个文件</el-tag>
                           </template>
                           <dynamic-table :rows="[a.row]" :labels="columnLabels" :max-height="180" />
@@ -288,7 +307,7 @@
 </template>
 
 <script>
-import { getReceiveMeta, listReceiveBills, queryReceive } from '@/api/kingdee/receive'
+import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel } from '@/api/kingdee/receive'
 import DynamicTable from './DynamicTable.vue'
 
 const EMPTY_SECTION = { name: '', label: '', joinKey: '', count: 0, columns: [], rows: [] }
@@ -305,6 +324,8 @@ export default {
     return {
       metaInfo: { tables: [], relations: [], columnLabels: {}, tableCount: 13 },
       queryParams: { billNo: '', fid: null, fuzzy: false },
+      exportTable: 'all',
+      exporting: false,
       demoBillNos: ['CGSH-20261111-0001', 'CGSH-20261111-0002', 'CGSH-20261110-0003'],
       dossier: null,
       loading: false,
@@ -366,7 +387,7 @@ export default {
     },
     widthOf(col) {
       if (/url|remark|name|materialname|attachname|filename|supplier/i.test(col)) return 180
-      if (/^(fseq|fqty|fstatus|fpkid|frequired|ftaxrate)$/i.test(col)) return 105
+      if (/^(fseq|fqty|fbillstatus|fpkid|fk_usp_checkboxfield|ftaxrate)$/i.test(col)) return 105
       return 145
     },
     relationLabel(value) {
@@ -434,6 +455,43 @@ export default {
       this.hasSearched = false
       this.errorMsg = ''
       this.activeTab = 'entries'
+    },
+    exportExcel() {
+      if (!this.canExport) return
+      this.exporting = true
+      const params = {
+        billNo: (this.queryParams.billNo || '').trim() || undefined,
+        fid: this.queryParams.fid || undefined,
+        table: this.exportTable
+      }
+      exportReceiveExcel(params).then(res => {
+        this.exporting = false
+        // 后端校验失败时返回 JSON 而非文件，不能把错误提示当成 Excel 下载
+        if (res && res.type && /json/i.test(res.type)) {
+          const reader = new FileReader()
+          reader.onload = () => {
+            let msg = '导出失败'
+            try { msg = (JSON.parse(reader.result) || {}).msg || msg } catch (e) { /* 保留默认提示 */ }
+            this.$message.error(msg)
+          }
+          reader.readAsText(res)
+          return
+        }
+        const blob = res instanceof Blob ? res : new Blob([res])
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = '收货单_' + (this.dossier.billNo || 'query') + '_' +
+          (this.exportTable === 'all' ? '全部表' : this.exportTable) + '.xlsx'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
+        this.$message.success('已导出 Excel')
+      }).catch(error => {
+        this.exporting = false
+        this.$message.error((error && error.message) || '导出失败')
+      })
     },
     exportJson() {
       const content = JSON.stringify(this.dossier, null, 2)

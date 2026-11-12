@@ -1,11 +1,16 @@
 package com.ruoyi.kingdee.controller;
 
 import com.ruoyi.kingdee.common.AjaxResult;
+import com.ruoyi.kingdee.service.ExcelExportService;
 import com.ruoyi.kingdee.service.PurReceiveService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URLEncoder;
 
 /**
  * 采购收货单查询接口。响应体与若依前端 request.js 约定一致：{code, msg, data}。
@@ -15,9 +20,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class PurReceiveController {
 
     private final PurReceiveService service;
+    private final ExcelExportService excelExportService;
 
-    public PurReceiveController(PurReceiveService service) {
+    public PurReceiveController(PurReceiveService service, ExcelExportService excelExportService) {
         this.service = service;
+        this.excelExportService = excelExportService;
     }
 
     /**
@@ -45,5 +52,31 @@ public class PurReceiveController {
                             @RequestParam(name = "fid", required = false) String fid,
                             @RequestParam(name = "fuzzy", required = false, defaultValue = "false") boolean fuzzy) {
         return AjaxResult.success(service.query(billNo, fid, fuzzy));
+    }
+
+    /**
+     * 导出 Excel：table 留空或 all 时导出全部 13 张表（每张一个工作表），指定表名时只导出该表。
+     * 先生成完整文件再写响应头，查询失败时仍由 GlobalExceptionHandler 返回 JSON 提示。
+     */
+    @GetMapping("/export")
+    public void export(@RequestParam(name = "billNo", required = false) String billNo,
+                       @RequestParam(name = "fid", required = false) String fid,
+                       @RequestParam(name = "table", required = false) String table,
+                       HttpServletResponse response) throws IOException {
+        byte[] data = excelExportService.build(billNo, fid, table);
+
+        String scope = table == null || table.trim().isEmpty()
+                || ExcelExportService.ALL_TABLES.equalsIgnoreCase(table.trim()) ? "全部表" : table.trim();
+        String subject = billNo != null && !billNo.trim().isEmpty() ? billNo.trim()
+                : fid != null && !fid.trim().isEmpty() ? fid.trim() : "query";
+        String fileName = URLEncoder.encode("采购收货单_" + subject + "_" + scope + ".xlsx", "UTF-8")
+                .replace("+", "%20");
+
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.setCharacterEncoding("UTF-8");
+        response.setContentLength(data.length);
+        response.setHeader("Content-Disposition",
+                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + fileName);
+        response.getOutputStream().write(data);
     }
 }

@@ -25,3 +25,13 @@ export function queryReceive(params) {
     params
   })
 }
+
+// 导出 Excel：table 传 all 导出全部表，传表名只导出该表
+export function exportReceiveExcel(params) {
+  return request({
+    url: '/kingdee/receive/export',
+    method: 'get',
+    params,
+    responseType: 'blob'
+  })
+}

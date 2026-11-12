@@ -334,8 +334,8 @@ public class PurReceiveService {
             candidate.setFid(row.getFid());
             candidate.setBillNo(row.getFbillno());
             candidate.setLabel(String.valueOf(row.getFbillno()) + "（内码 " + String.valueOf(row.getFid()) + "）");
-            candidate.setStatus(row.getFstatus());
-            candidate.setBizDate(row.getFbizdate());
+            candidate.setStatus(row.getFbillstatus());
+            candidate.setBizDate(row.getFbiztime());
             candidates.add(candidate);
         }
         return candidates;

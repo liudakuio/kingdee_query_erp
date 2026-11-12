@@ -39,6 +39,12 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+        <!-- 导出 .xlsx：每张表一个工作表 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
 
         <!-- 演示库：默认 demo 档案使用，切换真实金蝶库时不需要移除 -->
         <dependency>

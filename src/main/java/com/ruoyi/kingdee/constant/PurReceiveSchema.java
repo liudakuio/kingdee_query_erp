@@ -133,54 +133,164 @@ public final class PurReceiveSchema {
         relations.add(item);
     }
 
-    /** 文档中已确认的字段，以及演示库补充字段；未列出的字段原样展示列名。 */
+    /**
+     * 字段中文标签，取自《金蝶采购收货单数据库 ER 图》的字段说明。
+     * 未收录的列名由前端原样展示，不影响列的全量显示。
+     */
     public static Map<String, String> columnLabels() {
         Map<String, String> labels = new LinkedHashMap<>();
+
+        // 通用关联键
         labels.put("fid", "主表内码 fid");
-        labels.put("fbillno", "单据编号");
-        labels.put("fentryid", "明细行内码");
-        labels.put("fseq", "行序号");
-        labels.put("fdetailid", "附件明细内码");
+        labels.put("fentryid", "明细行内码 fentryid");
+        labels.put("fdetailid", "附件明细内码 fdetailid");
         labels.put("fpkid", "主键 fpkid");
-        labels.put("fmaterialid", "物料编码/内码");
-        labels.put("fmaterialname", "物料名称");
-        labels.put("fqty", "数量");
-        labels.put("fwarehouseid", "仓库内码");
-        labels.put("fk_usp_deliverybill", "收货通知单号");
-        labels.put("fk_usp_inspect_doc_no", "检验单据编号");
-        labels.put("fbizdate", "业务日期");
-        labels.put("fstatus", "单据状态");
-        labels.put("fsuppliername", "供应商");
-        labels.put("fcreatorname", "制单人");
+        labels.put("fseq", "分录行号");
+        labels.put("fsbillid", "源单内码");
+        labels.put("fstableid", "源单主实体编码");
+        labels.put("fsid", "源单主实体内码");
+        labels.put("fcomment", "备注");
+        labels.put("flocaleid", "语言");
+
+        // 主表 t_im_purrecbill（精简白名单）
+        labels.put("fbillno", "单据编号");
+        labels.put("fbillstatus", "单据状态");
+        labels.put("fbiztime", "业务日期");
+        labels.put("fcreatorid", "创建人");
         labels.put("fcreatetime", "创建时间");
-        labels.put("fremark", "备注");
-        labels.put("fsourcebillno", "来源单据编号");
-        labels.put("fsourcebilltype", "来源单据类型");
-        labels.put("ftrackno", "追踪号");
-        labels.put("ftrackstatus", "追踪状态");
-        labels.put("fsrcbillno", "反写来源单号");
-        labels.put("fwritebackqty", "反写数量");
-        labels.put("fwritebacktime", "反写时间");
+        labels.put("fmodifierid", "修改人");
+        labels.put("fmodifytime", "修改时间");
+        labels.put("fauditorid", "审核人");
+        labels.put("fauditdate", "审核时间");
+        labels.put("fbilltypeid", "单据类型");
+        labels.put("fsupplierid", "供货供应商");
+        labels.put("forgid", "收货组织");
+        labels.put("facceptancestatus", "验收状态");
+
+        // 明细表 t_im_purrecbillentry（精简白名单）
+        labels.put("fmaterialid", "物料编码");
+        labels.put("fmaterialname", "物料名称(封存)");
+        labels.put("fqty", "数量");
         labels.put("fbaseqty", "基本数量");
         labels.put("fprice", "单价");
+        labels.put("fpriceandtax", "含税单价");
         labels.put("famount", "金额");
-        labels.put("ftaxrate", "税率");
-        labels.put("fsourceentryid", "来源明细内码");
-        labels.put("flinkqty", "关联数量");
-        labels.put("fboxno", "箱号");
-        labels.put("fboxqty", "箱内数量");
-        labels.put("fbatchno", "批次号");
-        labels.put("fboxstatus", "箱状态");
-        labels.put("fattachname", "附件名称");
-        labels.put("fattachtype", "附件类型");
-        labels.put("frequired", "是否必传");
-        labels.put("fcheckresult", "检查结果");
-        labels.put("ffilename", "文件名");
-        labels.put("ffileurl", "文件路径");
-        labels.put("ffilesize", "文件大小(字节)");
-        labels.put("fuploadtime", "上传时间");
-        labels.put("flocale", "语言");
-        labels.put("fname", "名称");
+        labels.put("famountandtax", "价税合计");
+        labels.put("fcuramount", "金额(本位币)");
+        labels.put("ftaxamount", "税额");
+        labels.put("ftaxrate", "税率%");
+        labels.put("fwarehouseid", "仓库");
+        labels.put("flotnumber", "批号");
+        labels.put("fk_usp_textfield1", "供应商发货箱号");
+        labels.put("fk_usp_deliverybill", "收货通知单号");
+        labels.put("fk_usp_inspect_doc_no", "检验单据编号");
+        labels.put("fentrycomment", "明细备注");
+
+        // 主表扩展表
+        labels.put("fprovideraddress", "供货地址");
+        labels.put("foperate", "反写操作");
+        labels.put("fruleverid", "反写规则版本");
+        labels.put("fruleitemid", "反写规则项");
+        labels.put("fwritevalue", "反写值");
+        labels.put("ftbillid", "目标单内码");
+        labels.put("fttableid", "目标单实体编码");
+        labels.put("ftid", "目标单分录内码");
+        labels.put("fexchangerate", "汇率");
+        labels.put("fistax", "含税");
+        labels.put("fpaymode", "付款方式");
+        labels.put("fexratetable", "汇率表");
+        labels.put("finvoicebiztypeid", "发票类别");
+        labels.put("fpayconditionid", "付款条件");
+        labels.put("fexratedate", "汇率日期");
+        labels.put("fcurrencyid", "本位币");
+        labels.put("fsettlecurrencyid", "结算币");
+        labels.put("fsettletypeid", "结算方式");
+
+        // 明细关联子实体表
+        labels.put("fbaseqty_old", "基本数量_原始携带值");
+        labels.put("fk_usp_qtyfield2", "不合格数（加）");
+        labels.put("fk_usp_qtyfield2_old", "不合格数（加）_原始值");
+        labels.put("fk_usp_baseunitqtyfield2", "基本数量扩展字段2");
+        labels.put("fk_usp_baseunitqtyfield2_old", "基本数量扩展字段2_原始值");
+
+        // 明细分表 t_im_purrecbillentry_r
+        labels.put("fconcessionqty", "让步接收数量");
+        labels.put("fsrcsystem", "来源系统");
+        labels.put("flogisticsbill", "物流单据");
+        labels.put("finvbaseqty", "已入库基本数量");
+        labels.put("fmainbillentity", "核心单据实体");
+        labels.put("funqualifiedunit3rd", "不合格数量(第三单位)");
+        labels.put("funverifybaseqty", "未核销基本数量");
+        labels.put("ftotalreturnqty", "合格已退货数量");
+        labels.put("fqualifiedunit2nd", "合格数量(主辅单位)");
+        labels.put("fremaininvqty", "未入库数量");
+        labels.put("fsrcbillentryseq", "来源单据分录序号");
+        labels.put("fconbillrownum", "合同行号");
+        labels.put("fjoinpriceqty", "应付数量");
+        labels.put("fremainpurqty", "未转固数量");
+        labels.put("fconbillnumber", "合同编号");
+        labels.put("fmainbillid", "核心单据ID");
+        labels.put("facceptanceentrystatus", "验收状态");
+        labels.put("fsrcsysbillno", "来源系统单据编号");
+        labels.put("fsrcbillnumber", "来源单据编号");
+        labels.put("funqualifiedqty", "不合格数量");
+        labels.put("fsrcbillid", "来源单据ID");
+        labels.put("finvqty", "已入库数量");
+        labels.put("fmainbillnumber", "核心单据编号");
+        labels.put("fmversion", "物料版本");
+        labels.put("fverifybaseqty", "已核销基本数量");
+        labels.put("fsrcsysbillentryid", "来源系统单据分录ID");
+        labels.put("fremainjoinpricebaseqty", "剩余应付基本数量");
+        labels.put("fremainjoinpriceqty", "剩余应付数量");
+        labels.put("funverifyqty", "未核销数量");
+        labels.put("fpurbillentryid", "采购订单行号");
+        labels.put("fconbillid", "合同ID");
+        labels.put("fmainbillentryseq", "核心单据分录序号");
+        labels.put("funqualifiedunit2nd", "不合格数量(主辅单位)");
+        labels.put("fconbillentity", "合同实体");
+        labels.put("fconbillentryid", "合同行ID");
+        labels.put("fjoinpricebaseqty", "应付基本数量");
+        labels.put("fmftorderid", "委外工单ID");
+        labels.put("fconcessionbaseqty", "让步接收基本数量");
+        labels.put("ftotalreturnbaseqty", "合格已退货基本数量");
+        labels.put("fqualifiedunit3rd", "合格数量(第三单位)");
+        labels.put("fremainreturnbaseqty", "合格未退货基本数量");
+        labels.put("fpurbillnumber", "采购订单号");
+        labels.put("fverifyqty", "已核销数量");
+        labels.put("fqualifiedqty", "合格数量");
+        labels.put("fmftorderentryseq", "委外工单分录序号");
+        labels.put("fsrcbillentity", "来源单据实体");
+        labels.put("fpurchasedqty", "已转固数量");
+        labels.put("fqualifiedbaseqty", "合格基本数量");
+        labels.put("fmftorderentryid", "委外工单行ID");
+        labels.put("funqualifiedbaseqty", "不合格基本数量");
+        labels.put("fremaininvbaseqty", "未入库基本数量");
+        labels.put("fsrcbillentryid", "来源单据行ID");
+        labels.put("fpurorderbillnumber", "采购订单号");
+        labels.put("fmainbillentryid", "核心单据行ID");
+        labels.put("facceptancedate", "验收日期");
+        labels.put("fpurchasedamount", "已转固价税合计(本位币)");
+        labels.put("fremainpuramount", "未转固价税合计(本位币)");
+        labels.put("fremainreturnqty", "合格未退货数量");
+        labels.put("fsrcsysbillid", "来源系统单据ID");
+        labels.put("fmftordernumber", "委外工单编号");
+
+        // 自定义子单据体 / 附件
+        labels.put("fk_usp_sendboxno", "发货箱件/袋号");
+        labels.put("fk_usp_wxno", "集装箱号");
+        labels.put("fk_usp_srcsubentryid", "源单ID");
+        labels.put("fk_usp_arrived", "是否到达");
+        labels.put("fk_usp_realqty", "实收数量");
+        labels.put("fk_usp_detailqty", "应收数量");
+        labels.put("fk_usp_is_special", "放行");
+        labels.put("fk_usp_fileid", "文件/文件夹ID");
+        labels.put("fk_usp_download_link", "下载链接");
+        labels.put("fk_usp_checkboxfield", "是否必传");
+        labels.put("fk_usp_isfolder", "是否文件夹");
+        labels.put("fk_usp_isupload", "是否上传");
+        labels.put("fk_usp_attachname", "附件名称");
+        labels.put("fk_usp_pre_link", "预览链接");
+        labels.put("fbasedataid", "基础资料ID");
         return labels;
     }
 }

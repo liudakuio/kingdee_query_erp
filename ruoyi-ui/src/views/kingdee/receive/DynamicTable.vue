@@ -59,7 +59,7 @@ export default {
     },
     widthOf(col) {
       if (/url|remark|name|materialname|attachname|filename|supplier/i.test(col)) return 180
-      if (/^(fseq|fqty|fstatus|fpkid|frequired|ftaxrate)$/i.test(col)) return 105
+      if (/^(fseq|fqty|fbillstatus|fpkid|fk_usp_checkboxfield|ftaxrate)$/i.test(col)) return 105
       return 145
     },
     isEmpty(value) {
