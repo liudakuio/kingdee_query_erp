@@ -56,7 +56,9 @@ public class PurReceiveService {
         this.environment = environment;
     }
 
-    /** 供前端渲染使用的表字典、字段字典、关联关系。 */
+    /**
+     * 供前端渲染使用的表字典、字段字典、关联关系。
+     */
     public Map<String, Object> meta() {
         List<Map<String, Object>> tables = new ArrayList<>();
         for (TableDef def : PurReceiveSchema.tableDefs()) {
@@ -70,7 +72,9 @@ public class PurReceiveService {
         return meta;
     }
 
-    /** 单号联想 / 模糊查询。 */
+    /**
+     * 单号联想 / 模糊查询。
+     */
     public List<BillCandidate> suggest(String keyword) {
         return suggest(keyword, new ArrayList<String>());
     }
@@ -363,7 +367,9 @@ public class PurReceiveService {
         return value.trim();
     }
 
-    /** 单号白名单：字母/数字/汉字及 . _ - / ，杜绝引号、空格、通配符等注入字符。 */
+    /**
+     * 单号白名单：字母/数字/汉字及 . _ - / ，杜绝引号、空格、通配符等注入字符。
+     */
     private void validateBillNo(String value) {
         if (value.length() > 64) {
             throw new IllegalArgumentException("单据编号长度不能超过 64 个字符");

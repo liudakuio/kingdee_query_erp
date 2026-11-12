@@ -36,7 +36,7 @@ class PurReceiveIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.found").value(true))
                 .andExpect(jsonPath("$.data.billNo").value("CGSH-20261111-0001"))
-                .andExpect(jsonPath("$.data.fid").value(1001))
+                .andExpect(jsonPath("$.data.fid").value("1001"))
                 .andExpect(jsonPath("$.data.tables.t_im_purrecbill.count").value(1))
                 .andExpect(jsonPath("$.data.tables.t_im_purrecbillentry.count").value(2))
                 .andExpect(jsonPath("$.data.tables.tk_usp_receivingboxentry.count").value(4))
