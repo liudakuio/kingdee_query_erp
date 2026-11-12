@@ -1,92 +1,31 @@
 package com.ruoyi.kingdee.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
 
 import java.math.BigDecimal;
 
 /** 采购收货单物料明细表 t_im_purrecbillentry。 */
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PurRecBillEntry {
 
+    /** 明细行内码 */
     private Object fentryid;
+    /** 主表内码 */
     private Object fid;
+    /** 行序号 */
     private Integer fseq;
+    /** 物料编码/内码 */
     private String fmaterialid;
+    /** 物料名称 */
     private String fmaterialname;
+    /** 数量 */
     private BigDecimal fqty;
+    /** 仓库内码 */
     private String fwarehouseid;
+    /** 收货通知单号 */
     private String fk_usp_deliverybill;
+    /** 检验单据编号 */
     private String fk_usp_inspect_doc_no;
-
-    public Object getFentryid() {
-        return fentryid;
-    }
-
-    public void setFentryid(Object fentryid) {
-        this.fentryid = fentryid;
-    }
-
-    public Object getFid() {
-        return fid;
-    }
-
-    public void setFid(Object fid) {
-        this.fid = fid;
-    }
-
-    public Integer getFseq() {
-        return fseq;
-    }
-
-    public void setFseq(Integer fseq) {
-        this.fseq = fseq;
-    }
-
-    public String getFmaterialid() {
-        return fmaterialid;
-    }
-
-    public void setFmaterialid(String fmaterialid) {
-        this.fmaterialid = fmaterialid;
-    }
-
-    public String getFmaterialname() {
-        return fmaterialname;
-    }
-
-    public void setFmaterialname(String fmaterialname) {
-        this.fmaterialname = fmaterialname;
-    }
-
-    public BigDecimal getFqty() {
-        return fqty;
-    }
-
-    public void setFqty(BigDecimal fqty) {
-        this.fqty = fqty;
-    }
-
-    public String getFwarehouseid() {
-        return fwarehouseid;
-    }
-
-    public void setFwarehouseid(String fwarehouseid) {
-        this.fwarehouseid = fwarehouseid;
-    }
-
-    public String getFk_usp_deliverybill() {
-        return fk_usp_deliverybill;
-    }
-
-    public void setFk_usp_deliverybill(String fk_usp_deliverybill) {
-        this.fk_usp_deliverybill = fk_usp_deliverybill;
-    }
-
-    public String getFk_usp_inspect_doc_no() {
-        return fk_usp_inspect_doc_no;
-    }
-
-    public void setFk_usp_inspect_doc_no(String fk_usp_inspect_doc_no) {
-        this.fk_usp_inspect_doc_no = fk_usp_inspect_doc_no;
-    }
 }

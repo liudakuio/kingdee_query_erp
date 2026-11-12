@@ -33,6 +33,12 @@
             <artifactId>mybatis-spring-boot-starter</artifactId>
             <version>2.2.2</version>
         </dependency>
+        <!-- 实体类使用 Lombok @Data，去掉样板式 getter/setter；版本由 Spring Boot parent 管理 -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
 
         <!-- 演示库：默认 demo 档案使用，切换真实金蝶库时不需要移除 -->
         <dependency>

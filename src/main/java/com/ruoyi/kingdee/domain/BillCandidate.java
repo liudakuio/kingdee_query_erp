@@ -1,54 +1,21 @@
 package com.ruoyi.kingdee.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
 
 /** 单号联想 / 模糊查询返回的候选单据。 */
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class BillCandidate {
 
+    /** 主表内码，回传给 /query 做精确查询 */
     private Object fid;
+    /** 单据编号 */
     private String billNo;
+    /** 下拉框展示文本 */
     private String label;
+    /** 单据状态 */
     private String status;
+    /** 业务日期 */
     private String bizDate;
-
-    public Object getFid() {
-        return fid;
-    }
-
-    public void setFid(Object fid) {
-        this.fid = fid;
-    }
-
-    public String getBillNo() {
-        return billNo;
-    }
-
-    public void setBillNo(String billNo) {
-        this.billNo = billNo;
-    }
-
-    public String getLabel() {
-        return label;
-    }
-
-    public void setLabel(String label) {
-        this.label = label;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getBizDate() {
-        return bizDate;
-    }
-
-    public void setBizDate(String bizDate) {
-        this.bizDate = bizDate;
-    }
 }

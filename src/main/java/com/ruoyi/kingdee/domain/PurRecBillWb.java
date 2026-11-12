@@ -1,47 +1,21 @@
 package com.ruoyi.kingdee.domain;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Data;
 
 import java.math.BigDecimal;
 
 /** 采购收货单反写记录表 t_im_purrecbill_wb。 */
+@Data
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PurRecBillWb {
 
+    /** 主表内码 */
     private Object fid;
+    /** 反写来源单号 */
     private String fsrcbillno;
+    /** 反写数量 */
     private BigDecimal fwritebackqty;
+    /** 反写时间 */
     private String fwritebacktime;
-
-    public Object getFid() {
-        return fid;
-    }
-
-    public void setFid(Object fid) {
-        this.fid = fid;
-    }
-
-    public String getFsrcbillno() {
-        return fsrcbillno;
-    }
-
-    public void setFsrcbillno(String fsrcbillno) {
-        this.fsrcbillno = fsrcbillno;
-    }
-
-    public BigDecimal getFwritebackqty() {
-        return fwritebackqty;
-    }
-
-    public void setFwritebackqty(BigDecimal fwritebackqty) {
-        this.fwritebackqty = fwritebackqty;
-    }
-
-    public String getFwritebacktime() {
-        return fwritebacktime;
-    }
-
-    public void setFwritebacktime(String fwritebacktime) {
-        this.fwritebacktime = fwritebacktime;
-    }
 }
