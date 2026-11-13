@@ -12,6 +12,12 @@ const routes = [
     component: () => import('@/views/kingdee/receive/index.vue'),
     meta: { title: '采购收货单查询', icon: 'el-icon-document' }
   },
+  {
+    path: '/kingdee/vehicleplan',
+    name: 'VehiclePlan',
+    component: () => import('@/views/kingdee/vehicleplan/index.vue'),
+    meta: { title: '采购车辆计划查询', icon: 'el-icon-truck' }
+  },
   { path: '*', redirect: '/kingdee/receive' }
 ]
 

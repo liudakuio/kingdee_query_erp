@@ -79,10 +79,6 @@ export function mergeDossiers(items, tableDefs) {
   const entries = []
   const warnings = []
   const summary = {
-    entryCount: 0,
-    boxCount: 0,
-    attachCount: 0,
-    fileCount: 0,
     tableCount: defs.length,
     nonEmptyTableCount: 0
   }
@@ -91,10 +87,13 @@ export function mergeDossiers(items, tableDefs) {
       entries.push(withSource(entry, item.billNo))
     }
     const itemSummary = item.summary || {}
-    summary.entryCount += itemSummary.entryCount || 0
-    summary.boxCount += itemSummary.boxCount || 0
-    summary.attachCount += itemSummary.attachCount || 0
-    summary.fileCount += itemSummary.fileCount || 0
+    // 通用累加各单据的数量口径（明细行 / 箱件数 / 车辆数等），兼容不同业务的统计字段
+    for (const key of Object.keys(itemSummary)) {
+      if (key === 'tableCount' || key === 'nonEmptyTableCount') continue
+      if (typeof itemSummary[key] === 'number') {
+        summary[key] = (summary[key] || 0) + itemSummary[key]
+      }
+    }
     for (const warning of item.warnings || []) {
       warnings.push((item.billNo || '') + '：' + warning)
     }

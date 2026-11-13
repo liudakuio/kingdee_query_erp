@@ -18,12 +18,15 @@
             <el-menu-item index="/kingdee/receive">
               <i class="el-icon-document"></i><span>采购收货单查询</span>
             </el-menu-item>
+            <el-menu-item index="/kingdee/vehicleplan">
+              <i class="el-icon-truck"></i><span>采购车辆计划查询</span>
+            </el-menu-item>
           </el-submenu>
         </el-menu>
       </el-aside>
       <el-container>
         <el-header height="58px" class="navbar">
-          <div class="crumb"><i class="el-icon-location-outline"></i> 金蝶 ERP / <b>采购收货单查询</b></div>
+          <div class="crumb"><i class="el-icon-location-outline"></i> 金蝶 ERP / <b>{{ $route.meta.title || '查询' }}</b></div>
           <div class="nav-right">
             <el-tag size="mini" type="success" effect="plain">只读查询</el-tag>
             <span class="nav-user"><i class="el-icon-user-solid"></i> 管理员</span>
