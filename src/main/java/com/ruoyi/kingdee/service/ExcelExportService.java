@@ -3,6 +3,9 @@ package com.ruoyi.kingdee.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.kingdee.constant.PurReceiveSchema;
 import com.ruoyi.kingdee.constant.PurReceiveSchema.TableDef;
+import com.ruoyi.kingdee.service.export.CustomColumn;
+import com.ruoyi.kingdee.service.export.RowExportContext;
+import com.ruoyi.kingdee.service.export.TableExportCustomizer;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.FillPatternType;
@@ -14,18 +17,26 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.VerticalAlignment;
 import org.apache.poi.ss.util.WorkbookUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 把查询结果导出为 .xlsx：一张表一个工作表，表头同时给出中文标签与数据库列名。
  * 所有单元格按文本写入，避免 19 位内码在 Excel 中被转成 double 后丢精度。
+ * 表级定制通过 TableExportCustomizer 扩展点注入，仅在原有列末尾追加自定义列。
  */
 @Service
 public class ExcelExportService {
@@ -33,15 +44,27 @@ public class ExcelExportService {
     /** 导出全部 13 张表。 */
     public static final String ALL_TABLES = "all";
 
+    private static final Logger log = LoggerFactory.getLogger(ExcelExportService.class);
     private static final int MIN_COLUMN_WIDTH = 14;
     private static final int MAX_COLUMN_WIDTH = 60;
 
     private final PurReceiveService queryService;
     private final ObjectMapper objectMapper;
+    private final Map<String, TableExportCustomizer> customizerByTable;
 
-    public ExcelExportService(PurReceiveService queryService, ObjectMapper objectMapper) {
+    public ExcelExportService(PurReceiveService queryService, ObjectMapper objectMapper,
+                              ObjectProvider<TableExportCustomizer> customizers) {
         this.queryService = queryService;
         this.objectMapper = objectMapper;
+        Map<String, TableExportCustomizer> index = new HashMap<>();
+        for (TableExportCustomizer customizer : customizers.orderedStream().collect(Collectors.toList())) {
+            TableExportCustomizer previous = index.put(customizer.tableName(), customizer);
+            if (previous != null) {
+                throw new IllegalStateException("表 " + customizer.tableName() + " 重复注册导出定制器："
+                        + previous.getClass().getName() + " / " + customizer.getClass().getName());
+            }
+        }
+        this.customizerByTable = Collections.unmodifiableMap(index);
     }
 
     /**
@@ -60,12 +83,15 @@ public class ExcelExportService {
         Map<String, Object> tables = (Map<String, Object>) dossier.get("tables");
         List<String> tableNames = resolveTables(table, tables);
         Map<String, String> labels = PurReceiveSchema.columnLabels();
+        ExportSession session = new ExportSession(
+                dossier.get("billNo") == null ? billNo : String.valueOf(dossier.get("billNo")),
+                dossier.get("fid") == null ? fid : dossier.get("fid"));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             CellStyle headerStyle = headerStyle(workbook);
             for (String name : tableNames) {
-                writeSheet(workbook, headerStyle, name, tables, labels);
+                writeSheet(workbook, headerStyle, name, tables, labels, session);
             }
             workbook.write(out);
         }
@@ -101,18 +127,20 @@ public class ExcelExportService {
     }
 
     private void writeSheet(XSSFWorkbook workbook, CellStyle headerStyle, String tableName,
-                            Map<String, Object> tables, Map<String, String> labels) {
+                            Map<String, Object> tables, Map<String, String> labels,
+                            ExportSession session) {
         @SuppressWarnings("unchecked")
         Map<String, Object> section = (Map<String, Object>) tables.get(tableName);
         @SuppressWarnings("unchecked")
         List<String> columns = (List<String>) section.get("columns");
         @SuppressWarnings("unchecked")
         List<Object> rows = (List<Object>) section.getOrDefault("rows", Collections.emptyList());
+        List<CustomColumn> extraColumns = extraColumnsOf(tableName);
 
         Sheet sheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(tableName));
         sheet.createFreezePane(0, 1);
 
-        int[] widths = new int[columns.size()];
+        int[] widths = new int[columns.size() + extraColumns.size()];
         Row header = sheet.createRow(0);
         for (int i = 0; i < columns.size(); i++) {
             String text = headerOf(labels, columns.get(i));
@@ -121,10 +149,12 @@ public class ExcelExportService {
             cell.setCellStyle(headerStyle);
             widths[i] = displayLength(text);
         }
+        writeExtraHeaders(header, headerStyle, columns.size(), extraColumns, widths);
 
         int rowIndex = 1;
         for (Object rowObject : rows) {
-            Map<?, ?> values = objectMapper.convertValue(rowObject, Map.class);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> values = objectMapper.convertValue(rowObject, Map.class);
             Row row = sheet.createRow(rowIndex++);
             for (int i = 0; i < columns.size(); i++) {
                 Object value = values.get(columns.get(i));
@@ -132,11 +162,66 @@ public class ExcelExportService {
                 row.createCell(i).setCellValue(text);
                 widths[i] = Math.max(widths[i], displayLength(text));
             }
+            writeExtraCells(row, columns.size(), extraColumns, values, tableName, session, widths);
         }
 
         for (int i = 0; i < widths.length; i++) {
             int width = Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, widths[i] + 4));
             sheet.setColumnWidth(i, width * 256);
+        }
+    }
+
+    /** 未注册表级处理器时返回空列表，其余表零额外开销。 */
+    private List<CustomColumn> extraColumnsOf(String tableName) {
+        TableExportCustomizer customizer = customizerByTable.get(tableName);
+        if (customizer == null) {
+            return Collections.emptyList();
+        }
+        List<CustomColumn> columns = customizer.extraColumns();
+        return columns == null ? Collections.emptyList() : columns;
+    }
+
+    private void writeExtraHeaders(Row header, CellStyle headerStyle, int offset,
+                                   List<CustomColumn> extraColumns, int[] widths) {
+        for (int j = 0; j < extraColumns.size(); j++) {
+            String text = extraColumns.get(j).getHeader();
+            Cell cell = header.createCell(offset + j);
+            cell.setCellValue(text);
+            cell.setCellStyle(headerStyle);
+            widths[offset + j] = displayLength(text);
+        }
+    }
+
+    private void writeExtraCells(Row row, int offset, List<CustomColumn> extraColumns,
+                                 Map<String, Object> values, String tableName,
+                                 ExportSession session, int[] widths) {
+        if (extraColumns.isEmpty()) {
+            return;
+        }
+        RowExportContext context = new RowExportContext();
+        context.setRow(values);
+        context.setBillNo(session.billNo);
+        context.setFid(session.fid);
+        context.setTableName(tableName);
+
+        for (int j = 0; j < extraColumns.size(); j++) {
+            CustomColumn column = extraColumns.get(j);
+            String text = resolve(column, context, tableName, session);
+            row.createCell(offset + j).setCellValue(text);
+            widths[offset + j] = Math.max(widths[offset + j], displayLength(text));
+        }
+    }
+
+    /** 单个自定义列取值失败只写空值，整份导出不中断；同一张表最多告警一次。 */
+    private String resolve(CustomColumn column, RowExportContext context,
+                           String tableName, ExportSession session) {
+        try {
+            return column.resolve(context);
+        } catch (RuntimeException e) {
+            if (session.warnedTables.add(tableName)) {
+                log.warn("表 {} 的自定义列「{}」取值失败，已写空值", tableName, column.getHeader(), e);
+            }
+            return "";
         }
     }
 
@@ -153,5 +238,17 @@ public class ExcelExportService {
             length += c > 127 ? 2 : 1;
         }
         return length;
+    }
+
+    /** 一次导出内的共享信息：单据标识与已告警表集合，避免逐行刷日志。 */
+    private static final class ExportSession {
+        private final String billNo;
+        private final Object fid;
+        private final Set<String> warnedTables = new HashSet<>();
+
+        private ExportSession(String billNo, Object fid) {
+            this.billNo = billNo;
+            this.fid = fid;
+        }
     }
 }

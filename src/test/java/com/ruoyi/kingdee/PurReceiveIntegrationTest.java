@@ -125,6 +125,10 @@ class PurReceiveIntegrationTest {
             assertEquals(13, workbook.getNumberOfSheets());
             assertEquals("t_im_purrecbill", workbook.getSheetName(0));
             assertEquals("tk_usp_cgentryattachment", workbook.getSheetName(12));
+            // 未注册处理器的表列数不变，只有箱唛表在末尾多一列
+            assertEquals(15, workbook.getSheet("t_im_purrecbill").getRow(0).getPhysicalNumberOfCells());
+            assertEquals(20, workbook.getSheet("t_im_purrecbillentry").getRow(0).getPhysicalNumberOfCells());
+            assertEquals(10, workbook.getSheet("tk_usp_receivingboxentry").getRow(0).getPhysicalNumberOfCells());
         }
     }
 
@@ -141,10 +145,29 @@ class PurReceiveIntegrationTest {
             assertEquals(1, workbook.getNumberOfSheets());
             assertEquals("tk_usp_receivingboxentry", workbook.getSheetName(0));
             Sheet sheet = workbook.getSheetAt(0);
-            assertEquals(9, sheet.getRow(0).getPhysicalNumberOfCells());
+            assertEquals(10, sheet.getRow(0).getPhysicalNumberOfCells());
             assertTrue(sheet.getRow(0).getCell(0).getStringCellValue().contains("fk_usp_sendboxno"));
+            assertEquals("箱唛核对结果", sheet.getRow(0).getCell(9).getStringCellValue());
             assertEquals(4, sheet.getLastRowNum());
             assertEquals("BOX-0001", sheet.getRow(1).getCell(0).getStringCellValue());
+            assertEquals("箱号 BOX-0001 / 到达 是 / 单据 CGSH-20261111-0001",
+                    sheet.getRow(1).getCell(9).getStringCellValue());
+        }
+    }
+
+    @Test
+    void exportEmptyBoxTableShouldContainOnlyHeaderWithCustomColumn() throws Exception {
+        MvcResult result = mockMvc.perform(get("/kingdee/receive/export")
+                        .param("fid", "1003").param("table", "tk_usp_receivingboxentry"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        byte[] bytes = result.getResponse().getContentAsByteArray();
+        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+            Sheet sheet = workbook.getSheetAt(0);
+            assertEquals(0, sheet.getLastRowNum());
+            assertEquals(10, sheet.getRow(0).getPhysicalNumberOfCells());
+            assertEquals("箱唛核对结果", sheet.getRow(0).getCell(9).getStringCellValue());
         }
     }
 
