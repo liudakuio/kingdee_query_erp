@@ -3,6 +3,7 @@ package com.ruoyi.kingdee.controller;
 import com.ruoyi.kingdee.common.AjaxResult;
 import com.ruoyi.kingdee.service.ExcelExportService;
 import com.ruoyi.kingdee.service.PurReceiveService;
+import com.ruoyi.kingdee.util.BillNos;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -55,6 +56,15 @@ public class PurReceiveController {
     }
 
     /**
+     * 批量查询：billNos 以中英文逗号分隔，返回批次汇总对象（数量、合计、mode）+ items 全量单据结果。
+     * 单个单号非法或未找到只标记该项，不影响其它单号。
+     */
+    @GetMapping("/queryBatch")
+    public AjaxResult queryBatch(@RequestParam(name = "billNos") String billNos) {
+        return AjaxResult.success(service.queryBatch(billNos));
+    }
+
+    /**
      * 导出 Excel：table 留空或 all 时导出全部 13 张表（每张一个工作表），指定表名时只导出该表。
      * 先生成完整文件再写响应头，查询失败时仍由 GlobalExceptionHandler 返回 JSON 提示。
      */
@@ -64,14 +74,32 @@ public class PurReceiveController {
                        @RequestParam(name = "table", required = false) String table,
                        HttpServletResponse response) throws IOException {
         byte[] data = excelExportService.build(billNo, fid, table);
-
-        String scope = table == null || table.trim().isEmpty()
-                || ExcelExportService.ALL_TABLES.equalsIgnoreCase(table.trim()) ? "全部表" : table.trim();
         String subject = billNo != null && !billNo.trim().isEmpty() ? billNo.trim()
                 : fid != null && !fid.trim().isEmpty() ? fid.trim() : "query";
-        String fileName = URLEncoder.encode("采购收货单_" + subject + "_" + scope + ".xlsx", "UTF-8")
-                .replace("+", "%20");
+        writeExcel(response, data, "采购收货单_" + subject + "_" + scopeOf(table) + ".xlsx");
+    }
 
+    /**
+     * 批量导出 Excel：billNos 以逗号分隔，每张表只生成一个工作表，
+     * 多个单据的数据顺序追加并以「单据编号」列标识来源。表级自定义列对每一行分别生效。
+     */
+    @GetMapping("/exportBatch")
+    public void exportBatch(@RequestParam(name = "billNos") String billNos,
+                            @RequestParam(name = "table", required = false) String table,
+                            HttpServletResponse response) throws IOException {
+        byte[] data = excelExportService.buildBatch(billNos, table);
+        writeExcel(response, data,
+                "采购收货单_批量" + BillNos.parse(billNos).size() + "单_" + scopeOf(table) + ".xlsx");
+    }
+
+    private String scopeOf(String table) {
+        return table == null || table.trim().isEmpty()
+                || ExcelExportService.ALL_TABLES.equalsIgnoreCase(table.trim()) ? "全部表" : table.trim();
+    }
+
+    /** 统一设置下载响应头，文件名同时兼容 filename 与 RFC 5987 的 filename*。 */
+    private void writeExcel(HttpServletResponse response, byte[] data, String rawFileName) throws IOException {
+        String fileName = URLEncoder.encode(rawFileName, "UTF-8").replace("+", "%20");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setCharacterEncoding("UTF-8");
         response.setContentLength(data.length);

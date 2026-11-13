@@ -30,3 +30,5 @@ kingdee:
     max-candidates: 50
     # IN 条件分批大小（Oracle IN 上限 1000）
     in-clause-batch-size: 500
+    # 单次批量查询/导出最多允许的单号数量
+    max-batch-bills: 20

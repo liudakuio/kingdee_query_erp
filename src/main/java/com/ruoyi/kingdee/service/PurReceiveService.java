@@ -18,6 +18,7 @@ import com.ruoyi.kingdee.domain.PurRecBillTc;
 import com.ruoyi.kingdee.domain.PurRecBillWb;
 import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import com.ruoyi.kingdee.mapper.PurReceiveMapper;
+import com.ruoyi.kingdee.util.BillNos;
 import com.ruoyi.kingdee.util.RowUtils;
 import org.apache.ibatis.session.RowBounds;
 import org.slf4j.Logger;
@@ -151,6 +152,85 @@ public class PurReceiveService {
             buildDossier(bills.get(0), result, warnings);
         }
         return finish(result, start, warnings);
+    }
+
+    /**
+     * 批量查询：单号以中英文逗号分隔，逐个复用单号查询逻辑。
+     * 返回批次汇总对象（数量、合计、数据源模式由后端算好）+ items 全量单据结果。
+     * 空输入或超过数量上限整体拒绝；单个单号非法 / 查询失败只标记该项，不影响其它单号。
+     */
+    public Map<String, Object> queryBatch(String billNos) {
+        List<String> numbers = BillNos.parse(billNos);
+        if (numbers.isEmpty()) {
+            throw new IllegalArgumentException("请输入采购收货单号，多个单号用逗号分隔");
+        }
+        if (numbers.size() > properties.getMaxBatchBills()) {
+            throw new IllegalArgumentException("单次最多查询 " + properties.getMaxBatchBills() + " 个单号");
+        }
+
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (String no : numbers) {
+            Map<String, Object> item;
+            try {
+                item = query(no, null, false);
+                item.putIfAbsent("billNo", no);
+            } catch (RuntimeException e) {
+                item = new LinkedHashMap<>();
+                item.put("billNo", no);
+                item.put("found", false);
+                item.put("ambiguous", false);
+                item.put("candidates", Collections.emptyList());
+                item.put("message", e.getMessage());
+                item.put("error", true);
+            }
+            items.add(item);
+        }
+
+        int foundCount = 0;
+        long entryCount = 0;
+        long boxCount = 0;
+        long attachCount = 0;
+        long fileCount = 0;
+        String mode = null;
+        for (Map<String, Object> item : items) {
+            if (Boolean.TRUE.equals(item.get("found"))) {
+                foundCount++;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> summary = (Map<String, Object>) item.get("summary");
+                if (summary != null) {
+                    entryCount += longOf(summary.get("entryCount"));
+                    boxCount += longOf(summary.get("boxCount"));
+                    attachCount += longOf(summary.get("attachCount"));
+                    fileCount += longOf(summary.get("fileCount"));
+                }
+            }
+            if (mode == null) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> meta = (Map<String, Object>) item.get("meta");
+                if (meta != null && meta.get("mode") != null) {
+                    mode = String.valueOf(meta.get("mode"));
+                }
+            }
+        }
+
+        Map<String, Object> totals = new LinkedHashMap<>();
+        totals.put("entryCount", entryCount);
+        totals.put("boxCount", boxCount);
+        totals.put("attachCount", attachCount);
+        totals.put("fileCount", fileCount);
+
+        Map<String, Object> batch = new LinkedHashMap<>();
+        batch.put("total", items.size());
+        batch.put("foundCount", foundCount);
+        batch.put("missingCount", items.size() - foundCount);
+        batch.put("totals", totals);
+        batch.put("mode", mode == null ? "demo" : mode);
+        batch.put("items", items);
+        return batch;
+    }
+
+    private long longOf(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private void buildDossier(PurRecBill bill, Map<String, Object> result, List<String> warnings) {

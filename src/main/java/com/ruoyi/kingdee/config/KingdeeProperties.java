@@ -13,6 +13,8 @@ public class KingdeeProperties {
     private int maxRowsPerTable = 2000;
     private int maxCandidates = 50;
     private int inClauseBatchSize = 500;
+    /** 单次批量查询/导出允许的最大单号数，避免一次请求打满数据库连接池 */
+    private int maxBatchBills = 20;
 
     public int getMaxRowsPerTable() {
         return maxRowsPerTable;
@@ -36,5 +38,13 @@ public class KingdeeProperties {
 
     public void setInClauseBatchSize(int inClauseBatchSize) {
         this.inClauseBatchSize = inClauseBatchSize;
+    }
+
+    public int getMaxBatchBills() {
+        return maxBatchBills;
+    }
+
+    public void setMaxBatchBills(int maxBatchBills) {
+        this.maxBatchBills = maxBatchBills;
     }
 }

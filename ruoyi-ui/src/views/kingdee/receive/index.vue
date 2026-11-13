@@ -16,7 +16,7 @@
             :fetch-suggestions="querySearch"
             :trigger-on-focus="false"
             clearable
-            placeholder="请输入单据编号，支持单号联想"
+            placeholder="请输入单据编号，多个单号用逗号分隔"
             style="width: 320px"
             @select="onSuggestSelect"
             @input="onBillNoInput"
@@ -83,11 +83,79 @@
 
     <el-empty
       v-if="!hasSearched && !loading"
-      description="输入采购收货单号，查询主表、明细、收货箱与附件全链路数据"
+      description="输入采购收货单号（多个用逗号分隔），查询主表、明细、收货箱与附件全链路数据"
       class="empty-block"
     />
 
-    <el-card v-if="dossier && dossier.candidates && dossier.candidates.length" shadow="never" class="block-gap">
+    <template v-if="batchResults.length">
+      <el-card shadow="never" class="block-gap">
+        <div slot="header" class="card-header">
+          <span><i class="el-icon-tickets"></i> 批量查询结果</span>
+          <span class="card-meta">
+            共 {{ batchSummary.total }} 个单号 · 查到 {{ batchSummary.foundCount }} · 未找到 {{ batchSummary.missingCount }}
+            · 明细 {{ batchTotals.entryCount || 0 }} 行 · 箱唛 {{ batchTotals.boxCount || 0 }}
+            · 附件 {{ batchTotals.attachCount || 0 }} · 文件 {{ batchTotals.fileCount || 0 }}
+          </span>
+        </div>
+        <el-table :data="batchResults" border size="small">
+          <el-table-column type="index" label="#" width="50" align="center" />
+          <el-table-column prop="billNo" label="单据编号" min-width="200" />
+          <el-table-column label="状态" width="100" align="center">
+            <template slot-scope="scope">
+              <el-tag size="mini" :type="scope.row.found ? 'success' : 'info'" effect="plain">
+                {{ scope.row.found ? '已找到' : '未找到' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="明细" width="80" align="center">
+            <template slot-scope="scope">{{ (scope.row.summary && scope.row.summary.entryCount) || 0 }}</template>
+          </el-table-column>
+          <el-table-column label="箱唛" width="80" align="center">
+            <template slot-scope="scope">{{ (scope.row.summary && scope.row.summary.boxCount) || 0 }}</template>
+          </el-table-column>
+          <el-table-column label="附件" width="80" align="center">
+            <template slot-scope="scope">{{ (scope.row.summary && scope.row.summary.attachCount) || 0 }}</template>
+          </el-table-column>
+          <el-table-column label="文件" width="80" align="center">
+            <template slot-scope="scope">{{ (scope.row.summary && scope.row.summary.fileCount) || 0 }}</template>
+          </el-table-column>
+          <el-table-column label="说明" min-width="180" show-overflow-tooltip>
+            <template slot-scope="scope">{{ scope.row.message || '—' }}</template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+
+      <el-card v-for="(item, idx) in batchResults" :key="(item.billNo || '') + idx" shadow="never" class="block-gap">
+        <div slot="header" class="card-header">
+          <span><i class="el-icon-document"></i> {{ item.billNo || ('单号 ' + (idx + 1)) }}</span>
+          <span class="card-meta">
+            <el-tag size="mini" :type="item.found ? 'success' : 'info'" effect="plain">
+              {{ item.found ? '已找到' : '未找到' }}
+            </el-tag>
+            <span v-if="item.found">
+              fid = {{ item.fid }} · 明细 {{ (item.summary && item.summary.entryCount) || 0 }}
+              · 箱唛 {{ (item.summary && item.summary.boxCount) || 0 }}
+              · 附件 {{ (item.summary && item.summary.attachCount) || 0 }}
+              · 文件 {{ (item.summary && item.summary.fileCount) || 0 }}
+            </span>
+            <span v-else>{{ item.message }}</span>
+          </span>
+        </div>
+        <template v-if="item.found">
+          <div v-for="section in sectionsOf(item)" :key="section.name" class="ext-block">
+            <div class="sub-title">{{ section.label }} · <code>{{ section.name }}</code> · {{ section.count }} 行</div>
+            <dynamic-table
+              :rows="section.rows"
+              :columns="section.columns"
+              :labels="columnLabels"
+              :max-height="360"
+            />
+          </div>
+        </template>
+      </el-card>
+    </template>
+
+    <el-card v-if="!batchResults.length && dossier && dossier.candidates && dossier.candidates.length" shadow="never" class="block-gap">
       <div slot="header"><i class="el-icon-search"></i> {{ dossier.message }}</div>
       <el-table
         :data="dossier.candidates"
@@ -110,14 +178,14 @@
     </el-card>
 
     <el-alert
-      v-if="dossier && !dossier.found && !(dossier.candidates && dossier.candidates.length)"
+      v-if="!batchResults.length && dossier && !dossier.found && !(dossier.candidates && dossier.candidates.length)"
       :title="dossier.message || '未查询到数据'"
       type="warning"
       show-icon
       class="block-gap"
     />
 
-    <div v-if="dossier && dossier.found" class="result-block">
+    <div v-if="!batchResults.length && dossier && dossier.found" class="result-block">
       <el-row :gutter="14" class="stat-row">
         <el-col v-for="stat in statCards" :key="stat.label" :span="6">
           <div class="stat-card" :style="{ borderTopColor: stat.color }">
@@ -307,7 +375,7 @@
 </template>
 
 <script>
-import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel } from '@/api/kingdee/receive'
+import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel, queryBatchReceive, exportBatchReceive } from '@/api/kingdee/receive'
 import DynamicTable from './DynamicTable.vue'
 
 const EMPTY_SECTION = { name: '', label: '', joinKey: '', count: 0, columns: [], rows: [] }
@@ -327,7 +395,9 @@ export default {
       exportTable: 'all',
       exporting: false,
       demoBillNos: ['CGSH-20261111-0001', 'CGSH-20261111-0002', 'CGSH-20261110-0003'],
-      dossier: null,
+      singleDossier: null,
+      batchResults: [],
+      batchSummary: { total: 0, foundCount: 0, missingCount: 0, totals: {} },
       loading: false,
       hasSearched: false,
       errorMsg: '',
@@ -337,6 +407,11 @@ export default {
     }
   },
   computed: {
+    // 批量模式的详情由 batchResults 全部平铺渲染，dossier 只服务单号模式，不再默认取第一个
+    dossier() {
+      return this.batchResults.length ? null : this.singleDossier
+    },
+    batchTotals() { return (this.batchSummary && this.batchSummary.totals) || {} },
     columnLabels() { return this.metaInfo.columnLabels || {} },
     tableDefs() { return this.metaInfo.tables || [] },
     entries() { return (this.dossier && this.dossier.entries) || [] },
@@ -361,10 +436,17 @@ export default {
         { label: '附件文件 / 有数据的表', value: (this.summary.fileCount || 0) + ' / ' + (this.summary.nonEmptyTableCount || 0), icon: 'el-icon-folder-opened', color: '#8b6cf0' }
       ]
     },
-    canExport() { return !!(this.dossier && this.dossier.found) },
+    canExport() {
+      return this.batchResults.length
+        ? !!(this.batchSummary && this.batchSummary.foundCount > 0)
+        : !!(this.singleDossier && this.singleDossier.found)
+    },
     modeType() { return this.isRealDb ? 'warning' : 'success' },
     modeText() { return this.isRealDb ? '真实金蝶库' : 'H2 演示库' },
-    isRealDb() { return !!(this.dossier && this.dossier.meta && this.dossier.meta.mode === 'kingdee') }
+    isRealDb() {
+      if (this.batchResults.length) return !!(this.batchSummary && this.batchSummary.mode === 'kingdee')
+      return !!(this.singleDossier && this.singleDossier.meta && this.singleDossier.meta.mode === 'kingdee')
+    }
   },
   created() {
     this.loadMeta()
@@ -377,6 +459,10 @@ export default {
     },
     sectionOf(name) {
       return (this.dossier && this.dossier.tables && this.dossier.tables[name]) || EMPTY_SECTION
+    },
+    sectionsOf(item) {
+      const tables = (item && item.tables) || {}
+      return this.tableDefs.map(t => tables[t.name] || EMPTY_SECTION)
     },
     labelOf(col) { return this.columnLabels[col] || col },
     isEmpty(value) { return value === null || value === undefined || value === '' },
@@ -401,13 +487,43 @@ export default {
       }
       this.loading = true
       this.errorMsg = ''
+      if (/[,，]/.test(billNo)) {
+        queryBatchReceive({ billNos: billNo }).then(res => {
+          const data = (res && res.data) || {}
+          // 兼容汇总对象（新版）与裸数组（旧版后端），避免对象被当成数组导致整页空白
+          const legacy = Array.isArray(data)
+          this.batchResults = legacy ? data : (data.items || [])
+          this.batchSummary = legacy
+            ? {
+                total: data.length,
+                foundCount: data.filter(x => x.found).length,
+                missingCount: data.filter(x => !x.found).length,
+                totals: {},
+                mode: (data[0] && data[0].meta && data[0].meta.mode) || 'demo'
+              }
+            : data
+          this.singleDossier = null
+          this.hasSearched = true
+          this.loading = false
+        }).catch(error => {
+          this.loading = false
+          this.hasSearched = true
+          this.batchResults = []
+          this.batchSummary = { total: 0, foundCount: 0, missingCount: 0, totals: {} }
+          this.singleDossier = null
+          this.errorMsg = (error && error.message) || '批量查询失败'
+        })
+        return
+      }
       const params = {
         billNo: billNo || undefined,
         fid: this.queryParams.fid || undefined,
         fuzzy: this.queryParams.fuzzy
       }
       queryReceive(params).then(res => {
-        this.dossier = (res && res.data) || null
+        this.batchResults = []
+        this.batchSummary = { total: 0, foundCount: 0, missingCount: 0, totals: {} }
+        this.singleDossier = (res && res.data) || null
         this.hasSearched = true
         this.loading = false
         if (this.dossier && this.dossier.found) {
@@ -417,12 +533,12 @@ export default {
       }).catch(error => {
         this.loading = false
         this.hasSearched = true
-        this.dossier = null
+        this.singleDossier = null
         this.errorMsg = (error && error.message) || '查询失败'
       })
     },
     querySearch(keyword, callback) {
-      if (!keyword || !keyword.trim()) { callback([]); return }
+      if (!keyword || !keyword.trim() || /[,，]/.test(keyword)) { callback([]); return }
       listReceiveBills(keyword.trim()).then(res => {
         const rows = (res && res.data) || []
         callback(rows.map(row => ({ value: row.billNo, fid: row.fid, label: row.label })))
@@ -451,7 +567,9 @@ export default {
     },
     resetQuery() {
       this.queryParams = { billNo: '', fid: null, fuzzy: false }
-      this.dossier = null
+      this.singleDossier = null
+      this.batchResults = []
+      this.batchSummary = { total: 0, foundCount: 0, missingCount: 0, totals: {} }
       this.hasSearched = false
       this.errorMsg = ''
       this.activeTab = 'entries'
@@ -459,47 +577,57 @@ export default {
     exportExcel() {
       if (!this.canExport) return
       this.exporting = true
-      const params = {
-        billNo: (this.queryParams.billNo || '').trim() || undefined,
-        fid: this.queryParams.fid || undefined,
-        table: this.exportTable
-      }
-      exportReceiveExcel(params).then(res => {
+      const billNo = (this.queryParams.billNo || '').trim()
+      const isBatch = this.batchResults.length > 0
+      const params = isBatch
+        ? { billNos: billNo, table: this.exportTable }
+        : { billNo: billNo || undefined, fid: this.queryParams.fid || undefined, table: this.exportTable }
+      const request = isBatch ? exportBatchReceive(params) : exportReceiveExcel(params)
+      const subject = isBatch ? '批量' + this.batchResults.length + '单' : (this.dossier.billNo || 'query')
+      const name = '收货单_' + subject + '_' +
+        (this.exportTable === 'all' ? '全部表' : this.exportTable) + '.xlsx'
+      request.then(res => {
         this.exporting = false
-        // 后端校验失败时返回 JSON 而非文件，不能把错误提示当成 Excel 下载
-        if (res && res.type && /json/i.test(res.type)) {
-          const reader = new FileReader()
-          reader.onload = () => {
-            let msg = '导出失败'
-            try { msg = (JSON.parse(reader.result) || {}).msg || msg } catch (e) { /* 保留默认提示 */ }
-            this.$message.error(msg)
-          }
-          reader.readAsText(res)
-          return
-        }
-        const blob = res instanceof Blob ? res : new Blob([res])
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = '收货单_' + (this.dossier.billNo || 'query') + '_' +
-          (this.exportTable === 'all' ? '全部表' : this.exportTable) + '.xlsx'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
-        this.$message.success('已导出 Excel')
+        this.saveExcelBlob(res, name)
       }).catch(error => {
         this.exporting = false
         this.$message.error((error && error.message) || '导出失败')
       })
     },
+    saveExcelBlob(res, name) {
+      // 后端校验失败时返回 JSON 而非文件，不能把错误提示当成 Excel 下载
+      if (res && res.type && /json/i.test(res.type)) {
+        const reader = new FileReader()
+        reader.onload = () => {
+          let msg = '导出失败'
+          try { msg = (JSON.parse(reader.result) || {}).msg || msg } catch (e) { /* 保留默认提示 */ }
+          this.$message.error(msg)
+        }
+        reader.readAsText(res)
+        return
+      }
+      const blob = res instanceof Blob ? res : new Blob([res])
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      this.$message.success('已导出 Excel')
+    },
     exportJson() {
-      const content = JSON.stringify(this.dossier, null, 2)
+      const isBatch = this.batchResults.length > 0
+      const content = JSON.stringify(isBatch ? this.batchSummary : this.singleDossier, null, 2)
       const blob = new Blob([content], { type: 'application/json;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = '收货单_' + (this.dossier.billNo || 'query') + '.json'
+      const subject = isBatch
+        ? '批量' + this.batchResults.length + '单'
+        : ((this.singleDossier && this.singleDossier.billNo) || 'query')
+      link.download = '收货单_' + subject + '.json'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

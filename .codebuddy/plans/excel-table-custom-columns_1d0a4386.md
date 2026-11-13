@@ -1,131 +1,181 @@
 ---
 name: excel-table-custom-columns
 overview: 为 Excel 导出增加后端表级扩展点，支持按表追加自定义列且列值由 Java 处理器定义；保持现有列、前端与 /export 接口不变，并在 tk_usp_receivingboxentry 提供可运行示例。
+design:
+  architecture:
+    framework: vue
+  styleKeywords:
+    - 企业后台
+    - 卡片式布局
+    - 信息密度优先
+    - 扁平轻阴影
+    - 蓝色主色
+  fontSystem:
+    fontFamily: PingFang SC
+    heading:
+      size: 20px
+      weight: 600
+    subheading:
+      size: 15px
+      weight: 500
+    body:
+      size: 13px
+      weight: 400
+  colorSystem:
+    primary:
+      - "#409EFF"
+      - "#67C23A"
+    background:
+      - "#F5F7FA"
+      - "#FFFFFF"
+    text:
+      - "#303133"
+      - "#606266"
+      - "#909399"
+    functional:
+      - "#67C23A"
+      - "#E6A23C"
+      - "#F56C6C"
 todos:
-  - id: verify-export-chain
-    content: 使用 [subagent:code-explorer] 核对导出服务与测试断言
-    status: completed
-  - id: add-customizer-api
-    content: 新增表级扩展接口、列模型与箱唛示例列
-    status: completed
+  - id: verify-current-state
+    content: 用 [subagent:code-explorer] 核对批量链路与前端现状
+    status: pending
+  - id: backend-batch-aggregate
+    content: 改造 queryBatch 返回批次汇总对象
+    status: pending
     dependencies:
-      - verify-export-chain
-  - id: wire-excel-service
-    content: 改造 ExcelExportService 注入自定义列
-    status: completed
+      - verify-current-state
+  - id: backend-merged-export
+    content: 改造 exportBatch 按表合并并标识来源单据
+    status: pending
     dependencies:
-      - add-customizer-api
-  - id: update-export-tests
-    content: 更新集成测试覆盖单表、全部表与空表
-    status: completed
+      - backend-batch-aggregate
+  - id: frontend-flat-display
+    content: 前端平铺展示所有单据与汇总数量
+    status: pending
     dependencies:
-      - wire-excel-service
-  - id: run-maven-verification
-    content: 运行 Maven 编译与集成测试验证导出
-    status: completed
+      - backend-batch-aggregate
+  - id: update-tests
+    content: 更新批量查询与导出集成测试断言
+    status: pending
     dependencies:
-      - wire-excel-service
-      - update-export-tests
+      - backend-batch-aggregate
+      - backend-merged-export
+  - id: run-verification
+    content: 运行 Maven 测试与静态检查验证
+    status: pending
+    dependencies:
+      - backend-batch-aggregate
+      - backend-merged-export
+      - frontend-flat-display
+      - update-tests
 ---
 
-## User Requirements
+## 用户要求
 
-- 修改 `ExcelExportService.java:47-73` 的 `build` 及其导出流程，使**不同的表可以单独做特殊处理**。
-- 以 `tk_usp_receivingboxentry` 为例，导出时新增一个列，列的内容可以自定义。
-- 澄清确认：内容由**后端 Java 扩展点**提供（每张表一个处理器，列值可取该行其它字段或固定文本）；**仅追加自定义列**，保持现有列及顺序不变；**前端与 `/export` 接口不变**；需在该表提供可运行的示例列。
+多个采购收货单号以逗号分隔批量查询后，直接展示全部单据的数据与统计数量，不需要下拉选择单号，也不默认展示第一个查到的单据；同时调整后端批量查询接口，并同步调整批量导出。
 
-## Product Overview
+## 产品概述
 
-在现有 Excel 导出能力（全部表 13 个工作表 / 指定单表）之上，增加按表注册的表级定制扩展点。原有列、表头样式、冻结首行、列宽自适应与「文本写入」策略保持不变；导出结果中，仅配置了处理器的表在**末尾多出自定义列**，其余表与当前完全一致。
+在采购收货单关联查询页中，一次输入多个单号即可得到一份完整的批次结果：顶部直接给出单号总数、查到数、未找到数以及明细、箱唛、附件、文件合计；所有单据按输入顺序依次平铺展示，每张单据的 13 张关联表数据全部可见，失败或未找到的单据单独标注原因。单号查询的原有展示方式保持不变。
 
-## Core Features
+## 核心特性
 
-- 表级处理器自动注册：新增一个实现类即可为某张表定制，无需改动导出主流程。
-- 自定义列按行生成值：处理器可读该行字段、单据编号、fid、表名等上下文，也可返回固定文本。
-- 内置 `tk_usp_receivingboxentry` 示例列（表头与内容由示例处理器定义），后续改示例类即可自定义内容。
-- 单表导出与全部表导出一致生效；空表只多一列空表头；无处理器的表行为零变化。
-- 前端导出范围下拉、下载交互与 `/export` 参数保持原样。
+- 批量查询一次返回批次汇总信息（数量统计、数据源、全部单据结果），页面无需二次计算
+- 页面直接平铺展示所有单据的数据，无选择控件、无默认选中第一个单据
+- 顶部汇总卡片与逐单数量表格直接呈现查询出的数量
+- 每张单据独立卡片展示主表信息与全部 13 张表数据，未找到的单据仅显示原因
+- 批量导出按表合并：每张表一个工作表，多单据数据顺序追加并标识来源单据，保留失败单号说明
+- 单号查询、单号导出及表级自定义列的行为保持不变
 
 ## Tech Stack Selection
 
-沿用现有栈：Java 8、Spring Boot 2.5.15、Apache POI 5.2.3（`poi-ooxml` 已在 `pom.xml`）、Lombok `@Data`、Jackson `ObjectMapper`、JUnit 5 + MockMvc。**不新增依赖**；`PurReceiveController`、`ruoyi-ui` 前端、`pom.xml` 均不改动。
+沿用现有栈，不新增依赖：Java 8、Spring Boot 2.5.15、MyBatis、Apache POI 5.2.3、Lombok `@Data`、Jackson、JUnit 5 + MockMvc；前端 Vue 2.6 + Element UI 2.15（若依风格）。复用现有 `AjaxResult`、`GlobalExceptionHandler`、`BillNos`、`KingdeeProperties`、`PurReceiveSchema`、`DynamicTable`、`TableExportCustomizer` 等组件与约定。
 
 ## Implementation Approach
 
-采用策略模式 + Spring 自动发现，保持开闭原则：定义 `TableExportCustomizer` 接口（声明作用表名与追加列定义），`ExcelExportService` 通过构造器注入 `List&lt;TableExportCustomizer&gt;` 并构建 `表名 → 处理器` 的 Map；`build` 与 `writeSheet` 只在写完原有列后，把该表的追加列写到**表头末尾与每行末尾**。
-
-关键决策与取舍：
-
-- **扩展点粒度按表**：与用户「不同的表单独做特殊处理」一一对应；同表注册多个处理器时启动期抛 `IllegalStateException`，避免静默覆盖。
-- **值由 `Function&lt;RowExportContext, String&gt;` 计算**：既有按行计算能力（用户明确选择「列值可取该行其它字段」），又避免把业务规则写死在导出服务里；上下文携带 `row`（`objectMapper.convertValue` 后的 Map，Long 已字符串化）、`billNo`、`fid`、`tableName`。
-- **仅追加、不重排/隐藏/改表头/改样式**（用户澄清只选此项）：`writeSheet` 改动局限在宽度数组扩容与两处追加写入，`headerOf`、`displayLength`、`headerStyle`、`resolveTables` 保持原样，改动面最小。
-- **可靠性**：单个处理器异常时该单元格写空字符串并按表记录一次 `warn`（复用 slf4j，不打印整行数据），不使整份导出失败，与 `PurReceiveService.safe(...)` 的降级风格一致；`build` 仍先生成完整 `byte[]` 再返回，异常仍由 `GlobalExceptionHandler` 输出 JSON。
-- **精度保护**：自定义列值统一按文本写入，不引入数值类型转换，延续「19 位内码不丢精度」的既有约定。
-
-性能：每表一次 O(1) Map 查找，每行仅对追加列做一次计算，复用已有 `convertValue` 结果，不重复序列化；总复杂度 O(行数 × (原列数 + 追加列数))，与原实现同阶；无处理器的表零额外开销。
+1. **批次汇总对象**：`PurReceiveService.queryBatch` 由返回裸数组改为返回 `LinkedHashMap` 批次结果，字段顺序固定为 `total / foundCount / missingCount / totals / mode / items`。`items` 仍是每个单号完整 dossier 的列表，逐单复用现有 `query()`；`totals` 对 `found=true` 的 `summary` 累加 `entryCount / boxCount / attachCount / fileCount`；`mode` 取自首个有效 dossier 的 `meta.mode`，无有效结果时回退到当前数据源配置。保持空输入、超上限、单号非法/未找到的部分失败语义不变。沿用项目现有的 Map 响应风格，不引入新 DTO 层，避免架构不一致。
+2. **合并导出**：`ExcelExportService.buildBatch` 由「每单一组 `S1_`/`S2_` 工作表」改为「单据清单 sheet + 每张表一个 sheet」。按表汇总所有单据的 `rows`，按输入顺序追加；每个 sheet 末尾追加「单据编号」列以标识来源。技术上把工作表的行来源统一抽象为「一行数据 + 所属单据上下文」的内部轻量包装：单号导出与批量导出共用同一写表逻辑，批量时每行构造的 `RowExportContext.billNo/fid` 来自该行所属单据，确保表级自定义列仍逐行正确计算。「单据编号」列通过复用 `CustomColumn.of(...)` 追加到自定义列之后，不新增写表分支。
+3. **前端平铺展示**：`handleQuery` 批量分支读取 `res.data.items` 与 `res.data` 汇总字段；删除 `activeBillNo` 及其下拉，`dossier` computed 在批量模式返回 `null`（不再取 `items[0]`），单号模式返回 `singleDossier`；数据源标签改用批次对象的 `mode`；`canExport` 批量时基于 `foundCount`；`exportJson` 批量时导出整个批次结果。模板改为「汇总卡片 + 逐单卡片」纵向平铺，逐单卡片用新增的 `sectionsOf(item)` 把 13 张表依次渲染为 `DynamicTable`；单号结果块、候选卡片、未找到提示增加 `!batchResults.length` 条件以隔离两种模式。
+4. **兼容与取舍**：单号 `/query`、`/export` 返回结构零改动；批量上限 20、中英文逗号拆分、去重保序、部分失败标记保留；`BoxEntryExportCustomizer` 为用户自定义内容，禁止改动，测试不绑定其列文本。
 
 ## Implementation Notes
 
-- 复用现有模式与工具：表名用 `PurReceiveSchema.BOX` 等常量（禁止硬编码字符串）、`PurReceiveSchema.columnLabels()`、`WorkbookUtil.createSafeSheetName`、`objectMapper.convertValue`、`displayLength` 与 `MIN/MAX_COLUMN_WIDTH`；新模型类使用 Lombok `@Data`，与实体风格一致。
-- `build` 从 dossier 取 `billNo`/`fid` 组装上下文基础信息（找不到时回退到入参），传给 `writeSheet`；控制器注入参数数量不变（`ExcelExportService` 构造器新增一个参数，由 Spring 自动装配）。
-- 空表分支：仍只创建第 0 行表头，追加列同样只写表头；`createFreezePane(0, 1)` 不变。
-- 日志：降级时每表最多一条 `warn`，不含行数据；避免重复日志刷屏。
-- 向后兼容：`exportAllTablesShouldCreateOneSheetPerTable`（13 sheet）、`exportUnknownTableShouldReturnBadRequest`（code 400）不变；`exportSingleTableShouldCreateOnlyThatSheet` 的表头列数断言由 9 调整为 10，并补充末列表头、首行自定义值、`getLastRowNum()` 仍为 4、首列仍为 `BOX-0001`。
-- 上一轮导出功能的 Maven 编译/测试被用户取消、**尚未验证过**，本次必须一并执行（POI 依赖可能首次下载）。
-- 构建命令：`$env:JAVA_HOME='D:\app\jdk8'; $env:PATH="$env:JAVA_HOME\bin;D:\app\Maven\apache-maven-3.9.16\bin;$env:PATH"; mvn "-Dmaven.resolver.transport=wagon" -B "-Dspring.profiles.active=demo" test`（PowerShell 中含点号的 `-D` 必须整体加引号）。
+- 复用 `BillNos.parse`、`IllegalArgumentException` 由 `GlobalExceptionHandler` 输出 JSON、`AjaxResult.success`、`WorkbookUtil.createSafeSheetName`、`headerStyle` 单次创建复用、`displayLength` 列宽估算；所有单元格仍按文本写入，保持 19 位内码精度。
+- 性能：批量 20 单 × 13 表，最坏情况单表行数可达 4 万行，需在实现中避免重复 `convertValue`（每行仅一次）并复用同一 `XSSFWorkbook`；汇总统计在遍历 items 时一次完成，复杂度 O(单据数 × 表数 + 总行数)，无额外查询或 N+1。
+- 日志：沿用 slf4j 现有降级告警（自定义列取值失败每表最多一条），批量失败单号的信息放在响应 `message` 中，不打印整行数据。
+- Blast radius：不改变单号接口、不改 `pom.xml`/`application.yml`/`db/*.sql`/`DynamicTable.vue`；`PurReceiveController` 仅更新注释说明返回结构；`ruoyi-ui/src/api/kingdee/receive.js` 仅更新注释。
+- 验证：`ruoyi-ui/node_modules` 不存在，无法执行 `npm run build`；前端靠 IDE 静态诊断，后端靠完整 `mvn test` 回归。
 
 ## Architecture Design
 
-`PurReceiveController.export` → `ExcelExportService.build`（查询复用 `PurReceiveService.query`，解析导出范围）→ `writeSheet`（原列 + 该表 `TableExportCustomizer` 的追加列）→ `XSSFWorkbook` 字节流。定制逻辑隔离在 `service/export` 子包的处理器中，`ExcelExportService` 只依赖接口，新增表定制无需改主流程；组件关系简单，不引入新架构层。
+```mermaid
+flowchart LR
+    A["前端输入多单号"] --> B["/queryBatch"]
+    B --> C["PurReceiveService.queryBatch"]
+    C --> D["批次汇总对象<br/>total/foundCount/missingCount/totals/mode/items"]
+    D --> E["前端平铺展示<br/>汇总卡片 + 每单卡片 + 13 张表"]
+    A --> F["/exportBatch"]
+    F --> G["ExcelExportService.buildBatch"]
+    D --> G
+    G --> H["单据清单 sheet + 每表一个 sheet<br/>行追加 + 单据编号列 + 自定义列"]
+```
 
 ## Directory Structure
 
 ```
 project-root/
-├── src/main/java/com/ruoyi/kingdee/service/
-│   ├── ExcelExportService.java                 # [MODIFY] 导出主流程。构造器注入 List&lt;TableExportCustomizer&gt; 并建表名索引；build 组装 RowExportContext 基础信息；writeSheet 在原 columns 末尾追加自定义列（表头、数据行、列宽数组），空表仅表头；处理器异常降级为空 + 每表一次 warn；其余方法保持不变。
-│   └── export/
-│       ├── TableExportCustomizer.java         # [NEW] 表级定制扩展点接口。声明 tableName() 与 extraColumns()；由 Spring 扫描 @Component 实现自动注册，同表冲突在启动期报错。
-│       ├── CustomColumn.java                  # [NEW] 追加列模型。Lombok @Data，字段 header（表头文本）与 valueResolver（Function&lt;RowExportContext,String&gt;），提供 of(...) 静态工厂与 resolve(context)；resolve 内做 null/异常兜底返回空字符串。
-│       ├── RowExportContext.java              # [NEW] 按行计算上下文。Lombok @Data，字段 row（该行字段 Map）、billNo、fid、tableName；仅传值，不含 Excel/POI 依赖。
-│       └── BoxEntryExportCustomizer.java      # [NEW] 可运行示例。@Component，tableName() 返回 PurReceiveSchema.BOX；追加一列自定义表头，值按行由 fk_usp_sendboxno 与 fk_usp_arrived 等字段拼装，用户改此类即可自定义列内容。
-└── src/test/java/com/ruoyi/kingdee/
-    └── PurReceiveIntegrationTest.java         # [MODIFY] 调整单表导出列数断言（9 → 10）；新增断言：末列表头文本、首行自定义列值、原有首列 BOX-0001 与 4 行数据不变；补充全部表导出时其它 12 张表列数不变、以及单据 1003 空箱唛表只含表头（含自定义列）的用例。
+├── src/main/java/com/ruoyi/kingdee/
+│   ├── service/
+│   │   ├── PurReceiveService.java                 # [MODIFY] queryBatch 改为返回批次汇总对象：total/foundCount/missingCount/totals/mode/items；抽私有方法聚合 totals 与 mode；逐单查询与部分失败逻辑保持不变
+│   │   └── ExcelExportService.java               # [MODIFY] buildBatch 改为按表合并工作表；新增「行 + 所属单据上下文」内部包装并统一 writeSheet 行遍历；批量时追加「单据编号」CustomColumn；保留单据清单 sheet；单号 build 路径不变
+│   └── controller/
+│       └── PurReceiveController.java             # [MODIFY] 仅更新 /queryBatch 与 /exportBatch 的注释说明新返回结构与合并工作表；接口路径与参数不变
+├── src/test/java/com/ruoyi/kingdee/
+│   └── PurReceiveIntegrationTest.java            # [MODIFY] 批量查询断言改为 $.data.total/foundCount/missingCount/totals/mode/items；批量导出断言改为按表合并的 sheet 数、行数、单据编号列与自定义列有效性；其余 11 个用例保持不变
+└── ruoyi-ui/src/
+    ├── api/kingdee/receive.js                    # [MODIFY] 更新 queryBatchReceive 注释，说明返回批次汇总对象
+    └── views/kingdee/receive/index.vue           # [MODIFY] 删除下拉与 activeBillNo；dossier computed 批量返回 null；新增 batchResult/batchResults 状态与 sectionsOf 方法；重做批量结果区为汇总卡片 + 逐单平铺卡片；canExport/exportJson/modeType/isRealDb 适配批次对象；单号结果块增加模式隔离条件
 ```
 
-不改动：`PurReceiveController.java`、`ruoyi-ui/src/api/kingdee/receive.js`、`ruoyi-ui/src/views/kingdee/receive/index.vue`、`pom.xml`、`db/*.sql`。
+不改动：`service/export/BoxEntryExportCustomizer.java`（用户自定义 INSERT SQL 列）、`TableExportCustomizer.java`、`CustomColumn.java`、`RowExportContext.java`、`util/BillNos.java`、`config/KingdeeProperties.java`、`application.yml`、`pom.xml`、`db/*.sql`、`DynamicTable.vue`、`utils/request.js`。
 
 ## Key Code Structures
 
-扩展点契约为本次核心架构，仅给出接口级签名（不含实现）：
+`/queryBatch` 响应契约（`data` 为批次汇总对象，`items` 元素仍为现有完整 dossier）：
 
-```java
-public interface TableExportCustomizer {
-    String tableName();
-    List&lt;CustomColumn&gt; extraColumns();
-}
-
-@Data
-public final class CustomColumn {
-    private String header;
-    private Function&lt;RowExportContext, String&gt; valueResolver;
-    public static CustomColumn of(String header, Function&lt;RowExportContext, String&gt; valueResolver);
-    public String resolve(RowExportContext context);
-}
-
-@Data
-public final class RowExportContext {
-    private Map&lt;String, Object&gt; row;
-    private String billNo;
-    private Object fid;
-    private String tableName;
+```
+{
+  "total": 2,
+  "foundCount": 2,
+  "missingCount": 0,
+  "totals": { "entryCount": 3, "boxCount": 5, "attachCount": 3, "fileCount": 5 },
+  "mode": "demo",
+  "items": [ { "billNo": "...", "found": true, "tables": {}, "summary": {}, "meta": {} } ]
 }
 ```
+
+批量导出工作表契约：第 0 个 sheet 为「单据清单」（序号、单据编号、fid、是否找到、说明）；其后每个 sheet 名等于 `PurReceiveSchema` 表名，列顺序为「原列 + 该表自定义列 + 单据编号」，行按 items 顺序追加。
+
+## 设计风格
+
+沿用项目现有若依企业后台风格：浅灰背景、白色卡片、蓝色主色、细边框与轻阴影，信息密度优先，不做浮夸动效。批量结果区由「下拉选单号」改造为「汇总 + 全量平铺」，强调一眼看到数量与全部数据。
+
+## 页面与区块（采购收货单关联查询页）
+
+1. **搜索卡片**：保留单号输入（提示多个单号用逗号分隔）、模糊开关、查询/重置/导出结果按钮，以及导出范围选择与导出 Excel 按钮，样式与位置不变。
+2. **批量汇总卡片**：标题含单据图标；摘要行直接展示共 N 个单号、查到 M、未找到 K、明细/箱唛/附件/文件合计，数字用主色加粗；下方紧凑表格逐单列出单号、状态标签、四类数量与失败说明。
+3. **逐单数据卡片**：按输入顺序 `v-for` 渲染，每单一张卡片；标题显示单号、fid、状态标签与该单数量；找到的单据在卡片内按「表名小标题 + 行数 + 横向可滚动表格」平铺 13 张表，空表显示占位；未找到的单据仅显示原因说明。
+4. **单号结果块**：保留现有统计卡片、主表描述与标签页，仅在批量模式下隐藏；候选列表与空结果提示同样按模式隔离。
+
+## 交互与响应式
+
+卡片纵向排列，表格支持横向滚动与表头固定；状态用绿/灰语义标签区分；桌面宽度优先，窄屏时摘要行自动换行、统计数字不截断。所有区块复用现有 `block-gap`、`card-header`、`sub-title`、`ext-block` 与 Element UI 组件，保持视觉一致。
 
 ## Agent Extensions
 
 ### SubAgent
 
 - **code-explorer**
-- Purpose: 实施前快速核对 `ExcelExportService.java`、`PurReceiveSchema` 表名常量、`PurReceiveIntegrationTest` 导出用例的当前状态与断言。
-- Expected outcome: 产出精确的待修改文件清单与需调整的断言位置（特别是单表导出表头列数 9 需改为 10），确保改动基于最新代码而非压缩上下文。
+- Purpose: 实施前核对 `PurReceiveService.queryBatch`、`ExcelExportService.buildBatch`、`PurReceiveController` 两个批量接口、`index.vue` 当前下拉版本与 `PurReceiveIntegrationTest` 批量断言的最新状态，确认文件未被再次回退或改动。
+- Expected outcome: 给出精确的待修改位置与需调整的断言清单（尤其 `$.data.length()` 改为 `$.data.items.length()`、导出 sheet 数与「单据编号」列断言），确保实施基于真实代码而非压缩上下文。

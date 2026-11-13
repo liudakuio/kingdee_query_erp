@@ -47,6 +47,8 @@ public class ExcelExportService {
     private static final Logger log = LoggerFactory.getLogger(ExcelExportService.class);
     private static final int MIN_COLUMN_WIDTH = 14;
     private static final int MAX_COLUMN_WIDTH = 60;
+    /** 批量导出中标识该行来自哪个单据的追加列 */
+    private static final String BILL_NO_HEADER = "单据编号";
 
     private final PurReceiveService queryService;
     private final ObjectMapper objectMapper;
@@ -91,11 +93,146 @@ public class ExcelExportService {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             CellStyle headerStyle = headerStyle(workbook);
             for (String name : tableNames) {
-                writeSheet(workbook, headerStyle, name, tables, labels, session);
+                writeSheet(workbook, headerStyle, name, name, tables, labels, session);
             }
             workbook.write(out);
         }
         return out.toByteArray();
+    }
+
+    /**
+     * 批量导出：多个单号按逗号分隔，每张表只生成一个工作表。
+     * 同一张表的多个单据数据顺序追加，并在末尾以「单据编号」列标识来源。
+     * 表级自定义列按每一行所属单据的上下文计算。
+     */
+    public byte[] buildBatch(String billNos, String table) throws IOException {
+        Map<String, Object> batch = queryService.queryBatch(billNos);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) batch.get("items");
+        List<String> tableNames = resolveTableNames(table);
+        Map<String, String> labels = PurReceiveSchema.columnLabels();
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = headerStyle(workbook);
+            for (String name : tableNames) {
+                writeMergedSheet(workbook, headerStyle, name, items, labels);
+            }
+            workbook.write(out);
+        }
+        return out.toByteArray();
+    }
+
+    /** 批量导出时按表字典校验表名，不依赖某个单据的 tables 分区。 */
+    private List<String> resolveTableNames(String table) {
+        if (table == null || table.trim().isEmpty() || ALL_TABLES.equalsIgnoreCase(table.trim())) {
+            List<String> names = new ArrayList<>();
+            for (TableDef def : PurReceiveSchema.tableDefs()) {
+                names.add(def.getName());
+            }
+            return names;
+        }
+        String name = table.trim();
+        PurReceiveSchema.tableDef(name);
+        return Collections.singletonList(name);
+    }
+
+    /** 同一张表一个 sheet：表头只写一次，多个单据的行按顺序追加。 */
+    private void writeMergedSheet(XSSFWorkbook workbook, CellStyle headerStyle, String tableName,
+                                  List<Map<String, Object>> items, Map<String, String> labels) {
+        List<String> columns = columnsOfFirst(items, tableName);
+        List<CustomColumn> extraColumns = extraColumnsOf(tableName);
+        int billNoIndex = columns.size() + extraColumns.size();
+        int[] widths = new int[billNoIndex + 1];
+
+        Sheet sheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(tableName));
+        sheet.createFreezePane(0, 1);
+
+        Row header = sheet.createRow(0);
+        for (int i = 0; i < columns.size(); i++) {
+            String text = headerOf(labels, columns.get(i));
+            Cell cell = header.createCell(i);
+            cell.setCellValue(text);
+            cell.setCellStyle(headerStyle);
+            widths[i] = displayLength(text);
+        }
+        writeExtraHeaders(header, headerStyle, columns.size(), extraColumns, widths);
+        Cell sourceHeader = header.createCell(billNoIndex);
+        sourceHeader.setCellValue(BILL_NO_HEADER);
+        sourceHeader.setCellStyle(headerStyle);
+        widths[billNoIndex] = displayLength(BILL_NO_HEADER);
+
+        // 告警去重按 sheet 共享；单据标识按行传入，避免不同单据的行串号
+        ExportSession session = new ExportSession("", null);
+        int rowIndex = 1;
+        for (Map<String, Object> item : items) {
+            if (!Boolean.TRUE.equals(item.get("found"))) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tables = (Map<String, Object>) item.get("tables");
+            if (tables == null) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> section = (Map<String, Object>) tables.get(tableName);
+            if (section == null) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            List<Object> rows = (List<Object>) section.getOrDefault("rows", Collections.emptyList());
+            String billNo = text(item.get("billNo"));
+            Object fid = item.get("fid");
+            for (Object rowObject : rows) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> values = objectMapper.convertValue(rowObject, Map.class);
+                Row row = sheet.createRow(rowIndex++);
+                for (int i = 0; i < columns.size(); i++) {
+                    Object value = values.get(columns.get(i));
+                    String text = value == null ? "" : String.valueOf(value);
+                    row.createCell(i).setCellValue(text);
+                    widths[i] = Math.max(widths[i], displayLength(text));
+                }
+                writeExtraCells(row, columns.size(), extraColumns, values, tableName,
+                        session, widths, billNo, fid);
+                row.createCell(billNoIndex).setCellValue(billNo);
+                widths[billNoIndex] = Math.max(widths[billNoIndex], displayLength(billNo));
+            }
+        }
+
+        for (int i = 0; i < widths.length; i++) {
+            int width = Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, widths[i] + 4));
+            sheet.setColumnWidth(i, width * 256);
+        }
+    }
+
+    /** 取第一个查到的单据的列定义，保证同一 sheet 只有一套表头。 */
+    private List<String> columnsOfFirst(List<Map<String, Object>> items, String tableName) {
+        for (Map<String, Object> item : items) {
+            if (!Boolean.TRUE.equals(item.get("found"))) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> tables = (Map<String, Object>) item.get("tables");
+            if (tables == null) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> section = (Map<String, Object>) tables.get(tableName);
+            if (section == null) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            List<String> columns = (List<String>) section.get("columns");
+            if (columns != null) {
+                return columns;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private String text(Object value) {
+        return value == null ? "" : String.valueOf(value);
     }
 
     /** table 为空 / all 时按表字典顺序导出全部表；否则只导出指定表。 */
@@ -126,8 +263,8 @@ public class ExcelExportService {
         return style;
     }
 
-    private void writeSheet(XSSFWorkbook workbook, CellStyle headerStyle, String tableName,
-                            Map<String, Object> tables, Map<String, String> labels,
+    private void writeSheet(XSSFWorkbook workbook, CellStyle headerStyle, String sheetName,
+                            String tableName, Map<String, Object> tables, Map<String, String> labels,
                             ExportSession session) {
         @SuppressWarnings("unchecked")
         Map<String, Object> section = (Map<String, Object>) tables.get(tableName);
@@ -137,7 +274,7 @@ public class ExcelExportService {
         List<Object> rows = (List<Object>) section.getOrDefault("rows", Collections.emptyList());
         List<CustomColumn> extraColumns = extraColumnsOf(tableName);
 
-        Sheet sheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(tableName));
+        Sheet sheet = workbook.createSheet(WorkbookUtil.createSafeSheetName(sheetName));
         sheet.createFreezePane(0, 1);
 
         int[] widths = new int[columns.size() + extraColumns.size()];
@@ -162,7 +299,8 @@ public class ExcelExportService {
                 row.createCell(i).setCellValue(text);
                 widths[i] = Math.max(widths[i], displayLength(text));
             }
-            writeExtraCells(row, columns.size(), extraColumns, values, tableName, session, widths);
+            writeExtraCells(row, columns.size(), extraColumns, values, tableName,
+                    session, widths, session.billNo, session.fid);
         }
 
         for (int i = 0; i < widths.length; i++) {
@@ -194,14 +332,15 @@ public class ExcelExportService {
 
     private void writeExtraCells(Row row, int offset, List<CustomColumn> extraColumns,
                                  Map<String, Object> values, String tableName,
-                                 ExportSession session, int[] widths) {
+                                 ExportSession session, int[] widths,
+                                 String billNo, Object fid) {
         if (extraColumns.isEmpty()) {
             return;
         }
         RowExportContext context = new RowExportContext();
         context.setRow(values);
-        context.setBillNo(session.billNo);
-        context.setFid(session.fid);
+        context.setBillNo(billNo);
+        context.setFid(fid);
         context.setTableName(tableName);
 
         for (int j = 0; j < extraColumns.size(); j++) {
