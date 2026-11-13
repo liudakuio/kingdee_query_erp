@@ -5,7 +5,7 @@ import com.ruoyi.kingdee.domain.ContainerEntry;
 import com.ruoyi.kingdee.domain.Subentryentity;
 import com.ruoyi.kingdee.domain.VehicleEntry;
 import com.ruoyi.kingdee.domain.VehiclePlan;
-import com.ruoyi.kingdee.mapper.VehiclePlanMapper;
+import com.ruoyi.kingdee.mapper.vehicleplan.VehiclePlanMapper;
 import com.ruoyi.kingdee.service.VehiclePlanService;
 import com.ruoyi.kingdee.util.BillNos;
 import org.apache.ibatis.session.RowBounds;

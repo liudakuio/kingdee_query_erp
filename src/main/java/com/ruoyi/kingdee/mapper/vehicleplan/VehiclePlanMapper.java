@@ -1,4 +1,4 @@
-package com.ruoyi.kingdee.mapper;
+package com.ruoyi.kingdee.mapper.vehicleplan;
 
 import com.ruoyi.kingdee.domain.ContainerEntry;
 import com.ruoyi.kingdee.domain.Subentryentity;

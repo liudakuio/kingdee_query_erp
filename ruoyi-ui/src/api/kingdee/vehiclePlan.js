@@ -1,4 +1,4 @@
-import { request } from '@/utils/request'
+import request from '@/utils/request'
 
 // 车辆计划元数据：表字典、关联关系、字段中文标签
 export function getVehiclePlanMeta() {

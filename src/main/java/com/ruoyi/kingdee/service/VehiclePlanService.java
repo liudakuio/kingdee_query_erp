@@ -8,7 +8,7 @@ import com.ruoyi.kingdee.domain.Subentryentity;
 import com.ruoyi.kingdee.domain.VehicleEntry;
 import com.ruoyi.kingdee.domain.VehiclePlan;
 import com.ruoyi.kingdee.domain.VehiclePlanTc;
-import com.ruoyi.kingdee.mapper.VehiclePlanMapper;
+import com.ruoyi.kingdee.mapper.vehicleplan.VehiclePlanMapper;
 import com.ruoyi.kingdee.util.BillNos;
 import com.ruoyi.kingdee.util.RowUtils;
 import org.apache.ibatis.session.RowBounds;
@@ -181,8 +181,10 @@ public class VehiclePlanService {
         List<VehicleEntry> vehicleEntries = safe(VehiclePlanSchema.VEHICLE_ENTRY,
                 () -> mapper.selectVehicleEntries(fid, bounds()), warnings);
         List<Object> entryIds = RowUtils.distinctValues(containerEntries, ContainerEntry::getFentryid);
-        List<Subentryentity> subEntries = safe(VehiclePlanSchema.SUB_ENTRY,
-                () -> mapper.selectSubEntries(entryIds, bounds()), warnings);
+        // 没有物料信息时直接跳过，避免生成非法的 IN () 条件
+        List<Subentryentity> subEntries = entryIds.isEmpty()
+                ? Collections.emptyList()
+                : safe(VehiclePlanSchema.SUB_ENTRY, () -> mapper.selectSubEntries(entryIds, bounds()), warnings);
 
         Map<String, List<Subentryentity>> subGroup = RowUtils.groupBy(subEntries, Subentryentity::getFentryid);
 

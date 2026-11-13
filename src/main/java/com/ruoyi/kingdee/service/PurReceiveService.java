@@ -17,7 +17,7 @@ import com.ruoyi.kingdee.domain.PurRecBillLk;
 import com.ruoyi.kingdee.domain.PurRecBillTc;
 import com.ruoyi.kingdee.domain.PurRecBillWb;
 import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
-import com.ruoyi.kingdee.mapper.PurReceiveMapper;
+import com.ruoyi.kingdee.mapper.receive.PurReceiveMapper;
 import com.ruoyi.kingdee.util.BillNos;
 import com.ruoyi.kingdee.util.RowUtils;
 import org.apache.ibatis.session.RowBounds;

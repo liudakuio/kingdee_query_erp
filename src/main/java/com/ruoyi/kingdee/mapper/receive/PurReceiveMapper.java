@@ -1,4 +1,4 @@
-package com.ruoyi.kingdee.mapper;
+package com.ruoyi.kingdee.mapper.receive;
 
 import com.ruoyi.kingdee.domain.CgEntryAttachment;
 import com.ruoyi.kingdee.domain.CgShEntryAttach;

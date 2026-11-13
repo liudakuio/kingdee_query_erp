@@ -17,7 +17,7 @@ spring:
     throw-exception-if-no-handler-found: false
 
 mybatis:
-  mapper-locations: classpath*:mapper/**/*.xml
+  mapper-locations: classpath*:mapper/receive/*.xml
   configuration:
     # 结果集映射为 entity 时，值为 NULL 的列也调用 setter，保证字段状态一致
     call-setters-on-nulls: true
@@ -32,3 +32,14 @@ kingdee:
     in-clause-batch-size: 500
     # 单次批量查询/导出最多允许的单号数量
     max-batch-bills: 20
+  vehicleplan:
+    # 采购车辆计划数据库（独立数据源，与收货单主库不同）
+    # 这里默认指向内置 H2 空库，保证任何 profile 都能启动；
+    # 真实 PostgreSQL 连接写在本地 application-kingdee.yml（该文件不纳入版本控制）
+    datasource:
+      driver-class-name: org.h2.Driver
+      url: jdbc:h2:mem:vehicleplan;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+      username: sa
+      password: ""
+      hikari:
+        maximum-pool-size: 3

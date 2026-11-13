@@ -42,3 +42,18 @@ spring:
 # SQL Server（需添加 com.microsoft.sqlserver:mssql-jdbc 依赖）：
 #   driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 #   url: jdbc:sqlserver://127.0.0.1:1433;databaseName=KingdeeEAS
+
+# ============================================
+# 采购车辆计划数据库（独立数据源，与上面的收货单主库不是同一个库）
+# ============================================
+kingdee:
+  vehicleplan:
+    datasource:
+      driver-class-name: org.postgresql.Driver
+      # 请替换为采购车辆计划库的真实地址、端口、库名与账号
+      url: jdbc:postgresql://CHANGE_ME_HOST:5432/CHANGE_ME_VEHICLE_PLAN_DB
+      username: CHANGE_ME_VEHICLE_PLAN_USERNAME
+      password: CHANGE_ME_VEHICLE_PLAN_PASSWORD
+      hikari:
+        read-only: true
+        maximum-pool-size: 5
