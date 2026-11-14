@@ -38,7 +38,7 @@
                 <div class="expand-wrap">
                   <section class="expand-section">
                     <h4>
-                      <i class="el-icon-box"></i> 箱件信息
+                      <i class="el-icon-box"></i> 箱号信息
                       <el-tag size="mini">{{ (scope.row.ext[SUB_ENTRY] || []).length }}</el-tag>
                     </h4>
                     <dynamic-table
@@ -81,7 +81,9 @@
               </template>
             </el-table-column>
           </el-table>
-        </el-tab-pane>        <el-tab-pane :label="'主表扩展 (' + billExtSections.length + ')'" name="billExt">
+        </el-tab-pane>
+
+        <el-tab-pane :label="'主表扩展 (' + billExtSections.length + ')'" name="billExt">
           <el-alert title="关联键：tk_usp_vehicleplan.fid = tk_usp_vehicleplan_tc.fid" type="info" :closable="false" class="inner-tip" />
           <el-collapse v-model="billExtExpanded">
             <el-collapse-item v-for="s in billExtSections" :key="s.name" :name="s.name">
@@ -92,6 +94,16 @@
               <dynamic-table :rows="s.rows" :columns="s.columns" :labels="columnLabels" :max-height="300" />
             </el-collapse-item>
           </el-collapse>
+        </el-tab-pane>
+
+        <el-tab-pane :label="'箱号信息 (' + sectionOf(SUB_ENTRY).count + ')'" name="boxes">
+          <el-alert title="关联键：tk_usp_container_entry.fentryid = tk_usp_subentryentity.fentryid（一对多）" type="info" :closable="false" class="inner-tip" />
+          <dynamic-table
+            :rows="sectionOf(SUB_ENTRY).rows"
+            :columns="boxColumns"
+            :labels="columnLabels"
+            :max-height="420"
+          />
         </el-tab-pane>
 
         <el-tab-pane :label="'车辆明细 (' + sectionOf(VEHICLE_ENTRY).count + ')'" name="vehicles">
@@ -197,6 +209,14 @@ export default {
       if (!this.sourceColumn) return this.entryColumns
       return this.entryColumns.filter(col => col !== this.sourceColumn.key)
     },
+    // 箱号信息 Tab 的列顺序：来源单据列保持首位，箱件关键列前置，其余保持后端原顺序
+    boxColumns() {
+      const columns = this.sectionOf(SUB_ENTRY).columns || []
+      const sourceKey = this.sourceColumn && this.sourceColumn.key
+      const source = sourceKey ? columns.filter(col => col === sourceKey) : []
+      const others = columns.filter(col => col !== sourceKey)
+      return source.concat(this.sortBoxColumns(others))
+    },
     billExtSections() {
       return this.tableDefs
         .filter(t => t.scope === 'bill' && t.name !== PLAN && t.name !== VEHICLE_ENTRY)
@@ -219,6 +239,21 @@ export default {
   methods: {
     sectionOf(name) {
       return (this.dossier && this.dossier.tables && this.dossier.tables[name]) || EMPTY_SECTION
+    },
+    // 箱件关键列前置，便于一眼识别箱号、数量与重量
+    sortBoxColumns(columns) {
+      const priority = [
+        'fk_usp_sendboxno', 'fk_usp_wxno', 'fk_usp_detailnum', 'fk_usp_detailqty',
+        'fk_usp_gross_weight', 'fk_usp_net_weight', 'fk_usp_volume'
+      ]
+      const head = []
+      const rest = []
+      for (const col of columns) {
+        if (priority.indexOf(col) >= 0) head.push(col)
+        else rest.push(col)
+      }
+      head.sort((a, b) => priority.indexOf(a) - priority.indexOf(b))
+      return head.concat(rest)
     },
     labelOf(col) { return this.columnLabels[col] || col },
     isEmpty(value) { return value === null || value === undefined || value === '' },
