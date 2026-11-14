@@ -36,6 +36,12 @@
           <el-button type="primary" icon="el-icon-search" :loading="loading" @click="handleQuery">查询</el-button>
           <el-button icon="el-icon-refresh" @click="resetQuery">重置</el-button>
           <el-button icon="el-icon-download" :disabled="!canExport" @click="exportJson">导出结果</el-button>
+          <el-button
+            type="warning"
+            icon="el-icon-edit-outline"
+            :disabled="!hasBoxRows"
+            @click="openFixDialog"
+          >修改箱号信息</el-button>
         </el-form-item>
         <el-form-item label="导出 Excel">
           <el-select v-model="exportTable" size="small" style="width: 260px" placeholder="选择导出范围">
@@ -150,13 +156,49 @@
       :column-labels="columnLabels"
       :relations="metaInfo.relations || []"
     />
+
+    <el-dialog title="修改箱号信息" :visible.sync="fixDialogVisible" width="560px" append-to-body>
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="请上传正确的箱号信息 Excel（需包含 fentryid 列，以及箱号、集装箱号等箱件字段）。后端按 fentryid 与当前查询到的箱号信息匹配，处理完成后直接下载结果 Excel。"
+        class="inner-tip"
+      />
+      <el-upload
+        class="fix-uploader"
+        drag
+        action="#"
+        :auto-upload="false"
+        :limit="1"
+        :file-list="fixFileList"
+        :on-change="onFixFileChange"
+        :on-remove="onFixFileRemove"
+        accept=".xlsx,.xls"
+      >
+        <i class="el-icon-upload"></i>
+        <div class="el-upload__text">把箱号信息 Excel 拖到此处，或<em>点击选择</em></div>
+      </el-upload>
+      <div class="fix-summary">
+        当前可处理箱号信息 {{ boxRows.length }} 行{{ batchResults.length ? '（批量查询合并结果）' : '' }}
+      </div>
+      <div slot="footer">
+        <el-button @click="fixDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="fixUploading" :disabled="!fixFile" @click="submitFixBoxNo">
+          上传并处理
+        </el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script>
-import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel, queryBatchReceive, exportBatchReceive } from '@/api/kingdee/receive'
+import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel, queryBatchReceive, exportBatchReceive, fixBoxNo } from '@/api/kingdee/receive'
 import DossierPanel from './DossierPanel.vue'
 import { mergeDossiers, SOURCE_KEY, SOURCE_LABEL } from './mergeDossier'
+
+// 收货箱明细表名：修改箱号信息功能的数据来源
+const BOX_TABLE = 'tk_usp_receivingboxentry'
 
 export default {
   name: 'PurReceiveIndex',
@@ -173,7 +215,11 @@ export default {
       batchSummary: { total: 0, foundCount: 0, missingCount: 0, totals: {} },
       loading: false,
       hasSearched: false,
-      errorMsg: ''
+      errorMsg: '',
+      fixDialogVisible: false,
+      fixUploading: false,
+      fixFile: null,
+      fixFileList: []
     }
   },
   computed: {
@@ -205,6 +251,19 @@ export default {
     isRealDb() {
       if (this.batchResults.length) return !!(this.batchSummary && this.batchSummary.mode === 'kingdee')
       return !!(this.singleDossier && this.singleDossier.meta && this.singleDossier.meta.mode === 'kingdee')
+    },
+    // 当前展示的档案：批量模式取合并结果，单号模式取单据档案
+    currentDossier() {
+      return this.batchResults.length ? this.mergedDossier : this.singleDossier
+    },
+    // 箱号信息行：修改箱号信息功能的数据来源
+    boxRows() {
+      const tables = (this.currentDossier && this.currentDossier.tables) || {}
+      const section = tables[BOX_TABLE]
+      return (section && section.rows) || []
+    },
+    hasBoxRows() {
+      return this.boxRows.length > 0
     }
   },
   created() {
@@ -215,6 +274,41 @@ export default {
       getReceiveMeta().then(res => {
         if (res && res.data) this.metaInfo = res.data
       }).catch(() => {})
+    },
+    openFixDialog() {
+      this.fixFile = null
+      this.fixFileList = []
+      this.fixDialogVisible = true
+    },
+    onFixFileChange(file) {
+      this.fixFile = file.raw
+      this.fixFileList = [file]
+    },
+    onFixFileRemove() {
+      this.fixFile = null
+      this.fixFileList = []
+    },
+    submitFixBoxNo() {
+      if (!this.fixFile) return
+      // 批量模式下剔除合并视图插入的来源单据列，只提交真实箱号信息字段
+      const rows = this.boxRows.map(row => {
+        const copy = Object.assign({}, row)
+        delete copy[SOURCE_KEY]
+        return copy
+      })
+      const formData = new FormData()
+      formData.append('file', this.fixFile)
+      formData.append('rows', JSON.stringify(rows))
+      this.fixUploading = true
+      fixBoxNo(formData).then(res => {
+        this.fixUploading = false
+        this.fixDialogVisible = false
+        const billNo = (this.dossier && this.dossier.billNo) || '批量'
+        this.saveExcelBlob(res, '箱号信息修正结果_' + billNo + '.xlsx')
+      }).catch(error => {
+        this.fixUploading = false
+        this.$message.error((error && error.message) || '处理失败')
+      })
     },
     handleQuery() {
       const billNo = (this.queryParams.billNo || '').trim()
@@ -386,4 +480,7 @@ export default {
 .suggest-fid { color: #a8b0bf; font-size: 11px; margin-left: 12px; }
 .empty-block { margin-top: 18px; background: #fff; border-radius: 8px; padding: 40px 0; }
 .clickable-table { cursor: pointer; }
+.inner-tip { margin-bottom: 12px; }
+.fix-uploader { margin-bottom: 12px; }
+.fix-summary { font-size: 12px; color: #909399; }
 </style>

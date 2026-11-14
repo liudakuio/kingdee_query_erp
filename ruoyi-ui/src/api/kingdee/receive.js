@@ -45,6 +45,17 @@ export function queryBatchReceive(params) {
   })
 }
 
+// 修改箱号信息：上传含 fentryid 列的正确箱号信息 Excel + 当前箱号信息行（JSON 字符串），返回处理结果 Excel
+export function fixBoxNo(formData) {
+  return request({
+    url: '/kingdee/receive/fixBoxNo',
+    method: 'post',
+    data: formData,
+    responseType: 'blob',
+    timeout: 120000
+  })
+}
+
 // 批量导出 Excel：每张表一个工作表，多单据数据顺序追加并标注来源单据
 export function exportBatchReceive(params) {
   return request({

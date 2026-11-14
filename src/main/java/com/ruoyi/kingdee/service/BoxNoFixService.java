@@ -1,0 +1,60 @@
+package com.ruoyi.kingdee.service;
+
+import com.ruoyi.kingdee.service.fix.BoxNoExcelSupport;
+import com.ruoyi.kingdee.service.fix.BoxNoExcelVo;
+import com.ruoyi.kingdee.service.fix.BoxNoFixHandler;
+import com.ruoyi.kingdee.service.fix.BoxNoFixRow;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 箱号信息修正的编排：解析上传表 → 调用处理逻辑扩展点 → 生成结果 Excel。
+ */
+@Service
+public class BoxNoFixService {
+
+    private final BoxNoFixHandler handler;
+
+    public BoxNoFixService(BoxNoFixHandler handler) {
+        this.handler = handler;
+    }
+
+    /**
+     * @param file        上传的正确箱号信息 Excel
+     * @param currentRows 当前查询到的箱号信息行（key = 数据库列名）
+     * @return 处理完成的结果 Excel 字节流
+     */
+    public byte[] fix(MultipartFile file, List<Map<String, Object>> currentRows) throws IOException {
+        List<Map<String, String>> uploaded = BoxNoExcelSupport.read(file);
+        if (uploaded.isEmpty()) {
+            throw new IllegalArgumentException("上传的 Excel 没有可处理的数据行");
+        }
+        if (currentRows == null || currentRows.isEmpty()) {
+            throw new IllegalArgumentException("当前没有可处理的箱号信息数据，请先查询后再上传");
+        }
+        List<BoxNoFixRow> result = handler.fix(uploaded, currentRows);
+        List<String> columns = columnsOf(currentRows);
+        List<BoxNoExcelVo> excelRows = new ArrayList<>();
+        for (BoxNoFixRow row : result) {
+            excelRows.add(BoxNoExcelVo.of(row));
+        }
+        return BoxNoExcelSupport.write(excelRows, columns, "箱号信息修正结果");
+    }
+
+    /** 以当前行的列顺序为准（前端传来的 JSON 键顺序与后端查询列一致） */
+    private List<String> columnsOf(List<Map<String, Object>> rows) {
+        List<String> columns = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            if (row != null) {
+                columns.addAll(row.keySet());
+                break;
+            }
+        }
+        return columns;
+    }
+}

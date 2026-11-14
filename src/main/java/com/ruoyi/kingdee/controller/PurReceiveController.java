@@ -1,17 +1,24 @@
 package com.ruoyi.kingdee.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.kingdee.common.AjaxResult;
+import com.ruoyi.kingdee.service.BoxNoFixService;
 import com.ruoyi.kingdee.service.ExcelExportService;
 import com.ruoyi.kingdee.service.PurReceiveService;
 import com.ruoyi.kingdee.util.BillNos;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URLEncoder;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 采购收货单查询接口。响应体与若依前端 request.js 约定一致：{code, msg, data}。
@@ -22,10 +29,15 @@ public class PurReceiveController {
 
     private final PurReceiveService service;
     private final ExcelExportService excelExportService;
+    private final BoxNoFixService boxNoFixService;
+    private final ObjectMapper objectMapper;
 
-    public PurReceiveController(PurReceiveService service, ExcelExportService excelExportService) {
+    public PurReceiveController(PurReceiveService service, ExcelExportService excelExportService,
+                                BoxNoFixService boxNoFixService, ObjectMapper objectMapper) {
         this.service = service;
         this.excelExportService = excelExportService;
+        this.boxNoFixService = boxNoFixService;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -98,6 +110,31 @@ public class PurReceiveController {
     }
 
     /** 统一设置下载响应头，文件名同时兼容 filename 与 RFC 5987 的 filename*。 */
+    /**
+     * 修改箱号信息：上传正确的箱号信息 Excel + 当前查询到的箱号信息行，后端处理后返回结果 Excel。
+     * 处理规则由 service/fix 下的 BoxNoFixHandler 扩展点决定。
+     */
+    @PostMapping("/fixBoxNo")
+    public void fixBoxNo(@RequestParam("file") MultipartFile file,
+                         @RequestParam("rows") String rows,
+                         HttpServletResponse response) throws IOException {
+        byte[] data = boxNoFixService.fix(file, parseRows(rows));
+        writeExcel(response, data, "箱号信息修正结果_" + System.currentTimeMillis() + ".xlsx");
+    }
+
+    /** 解析前端传来的当前箱号信息行（JSON 数组字符串） */
+    private List<Map<String, Object>> parseRows(String rows) {
+        if (rows == null || rows.trim().isEmpty()) {
+            throw new IllegalArgumentException("缺少当前箱号信息数据，请先查询后再上传");
+        }
+        try {
+            return objectMapper.readValue(rows, new TypeReference<List<Map<String, Object>>>() {
+            });
+        } catch (Exception e) {
+            throw new IllegalArgumentException("箱号信息数据格式不正确：" + e.getMessage());
+        }
+    }
+
     private void writeExcel(HttpServletResponse response, byte[] data, String rawFileName) throws IOException {
         String fileName = URLEncoder.encode(rawFileName, "UTF-8").replace("+", "%20");
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
