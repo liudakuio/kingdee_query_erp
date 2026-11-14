@@ -21,6 +21,9 @@
             <el-menu-item index="/kingdee/vehicleplan">
               <i class="el-icon-truck"></i><span>采购车辆计划查询</span>
             </el-menu-item>
+            <el-menu-item index="/kingdee/express">
+              <i class="el-icon-s-cooperation"></i><span>采购物流单查询</span>
+            </el-menu-item>
           </el-submenu>
         </el-menu>
       </el-aside>

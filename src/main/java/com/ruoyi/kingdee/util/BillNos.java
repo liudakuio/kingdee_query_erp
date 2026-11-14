@@ -32,4 +32,22 @@ public final class BillNos {
     public static boolean isMultiple(String value) {
         return value != null && (value.indexOf(',') >= 0 || value.indexOf('，') >= 0);
     }
+
+    /**
+     * 单号白名单校验：长度不超过 64，仅允许字母、数字、汉字及 . _ - / ，
+     * 杜绝引号、空格、通配符等注入字符。收货单与车辆计划共用此规则。
+     */
+    public static void validate(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            throw new IllegalArgumentException("单据编号不能为空");
+        }
+        if (value.length() > 64) {
+            throw new IllegalArgumentException("单据编号长度不能超过 64 个字符");
+        }
+        for (char c : value.toCharArray()) {
+            if (!Character.isLetterOrDigit(c) && c != '.' && c != '_' && c != '-' && c != '/') {
+                throw new IllegalArgumentException("单据编号包含非法字符：" + c);
+            }
+        }
+    }
 }

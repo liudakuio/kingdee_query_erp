@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.kingdee.mapper.vehicleplan.ExpressMapper">
+
+    <!-- 所有表名与列名均为固定字面量，用户输入只通过 #{} 绑定，杜绝 SQL 注入 -->
+
+    <select id="selectExpressByBillNo" resultType="com.ruoyi.kingdee.domain.Express">
+        SELECT * FROM tk_usp_express WHERE fbillno = #{billNo}
+    </select>
+
+    <select id="selectExpressByFid" resultType="com.ruoyi.kingdee.domain.Express">
+        SELECT * FROM tk_usp_express WHERE fid = #{fid}
+    </select>
+
+    <select id="selectExpressTc" resultType="com.ruoyi.kingdee.domain.ExpressTc">
+        SELECT * FROM tk_usp_express_tc WHERE fid = #{fid}
+    </select>
+
+</mapper>

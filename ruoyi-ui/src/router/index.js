@@ -18,6 +18,12 @@ const routes = [
     component: () => import('@/views/kingdee/vehicleplan/index.vue'),
     meta: { title: '采购车辆计划查询', icon: 'el-icon-truck' }
   },
+  {
+    path: '/kingdee/express',
+    name: 'Express',
+    component: () => import('@/views/kingdee/express/index.vue'),
+    meta: { title: '采购物流单查询', icon: 'el-icon-s-cooperation' }
+  },
   { path: '*', redirect: '/kingdee/receive' }
 ]
 

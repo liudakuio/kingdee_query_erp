@@ -316,16 +316,9 @@ public class VehiclePlanService {
         return value.trim();
     }
 
-    /** 单号白名单：字母/数字/汉字及 . _ - / ，杜绝引号、空格、通配符等注入字符。 */
+    /** 单号白名单校验与采购物流单共用 BillNos.validate 规则，避免重复实现。 */
     private void validateBillNo(String value) {
-        if (value.length() > 64) {
-            throw new IllegalArgumentException("单据编号长度不能超过 64 个字符");
-        }
-        for (char c : value.toCharArray()) {
-            if (!Character.isLetterOrDigit(c) && c != '.' && c != '_' && c != '-' && c != '/') {
-                throw new IllegalArgumentException("单据编号包含非法字符：" + c);
-            }
-        }
+        BillNos.validate(value);
     }
 
     @FunctionalInterface
