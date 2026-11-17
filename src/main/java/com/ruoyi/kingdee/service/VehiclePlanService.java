@@ -95,15 +95,11 @@ public class VehiclePlanService {
         }
 
         List<VehiclePlan> plans = fidParam != null
-                ? QuerySupport.safe(VehiclePlanSchema.PLAN,
-                () -> mapper.selectPlansByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(VehiclePlanSchema.PLAN,
-                () -> mapper.selectPlansByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPlansByFid(fidParam, bounds(1)), warnings, log)
+                : QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPlansByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
 
         if (plans.isEmpty()) {
-            result.setMessage(fidParam != null
-                    ? "未找到内码为 " + query.getFid() + " 的采购车辆计划"
-                    : "未找到单据编号为 " + no + " 的采购车辆计划");
+            result.setMessage(fidParam != null ? "未找到内码为 " + query.getFid() + " 的采购车辆计划" : "未找到单据编号为 " + no + " 的采购车辆计划");
         } else if (fidParam == null && plans.size() > 1) {
             result.setAmbiguous(true);
             result.setCandidates(candidatesFromPlans(plans));
@@ -166,24 +162,19 @@ public class VehiclePlanService {
     private void buildDossier(VehiclePlan plan, VehiclePlanDossierVO result, List<String> warnings) {
         final Object fid = plan.getFid();
 
-        List<VehiclePlanTc> planTc = QuerySupport.safe(VehiclePlanSchema.PLAN_TC,
-                () -> mapper.selectPlanTc(fid, bounds()), warnings, log);
-        List<ContainerEntry> containerEntries = QuerySupport.safe(VehiclePlanSchema.CONTAINER_ENTRY,
-                () -> mapper.selectContainerEntries(fid, bounds()), warnings, log);
-        List<VehicleEntry> vehicleEntries = QuerySupport.safe(VehiclePlanSchema.VEHICLE_ENTRY,
-                () -> mapper.selectVehicleEntries(fid, bounds()), warnings, log);
+        List<VehiclePlanTc> planTc = QuerySupport.safe(VehiclePlanSchema.PLAN_TC, () -> mapper.selectPlanTc(fid, bounds()), warnings, log);
+        List<ContainerEntry> containerEntries = QuerySupport.safe(VehiclePlanSchema.CONTAINER_ENTRY, () -> mapper.selectContainerEntries(fid, bounds()), warnings, log);
+        List<VehicleEntry> vehicleEntries = QuerySupport.safe(VehiclePlanSchema.VEHICLE_ENTRY, () -> mapper.selectVehicleEntries(fid, bounds()), warnings, log);
         List<Object> entryIds = RowUtils.distinctValues(containerEntries, ContainerEntry::getFentryid);
         // 没有物料信息时直接跳过，避免生成非法的 IN () 条件
         List<Subentryentity> subEntries = entryIds.isEmpty()
                 ? Collections.emptyList()
-                : QuerySupport.safe(VehiclePlanSchema.SUB_ENTRY,
-                () -> mapper.selectSubEntries(entryIds, bounds()), warnings, log);
+                : QuerySupport.safe(VehiclePlanSchema.SUB_ENTRY, () -> mapper.selectSubEntries(entryIds, bounds()), warnings, log);
 
         Map<String, List<Subentryentity>> subGroup = RowUtils.groupBy(subEntries, Subentryentity::getFentryid);
 
         Map<String, TableSectionVO> tables = new LinkedHashMap<>();
-        putSection(tables, def(VehiclePlanSchema.PLAN),
-                Collections.singletonList(plan), VehiclePlan.class);
+        putSection(tables, def(VehiclePlanSchema.PLAN), Collections.singletonList(plan), VehiclePlan.class);
         putSection(tables, def(VehiclePlanSchema.PLAN_TC), planTc, VehiclePlanTc.class);
         putSection(tables, def(VehiclePlanSchema.VEHICLE_ENTRY), vehicleEntries, VehicleEntry.class);
         putSection(tables, def(VehiclePlanSchema.CONTAINER_ENTRY), containerEntries, ContainerEntry.class);

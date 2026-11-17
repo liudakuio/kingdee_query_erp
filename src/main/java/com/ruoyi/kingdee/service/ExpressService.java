@@ -99,15 +99,11 @@ public class ExpressService {
         }
 
         List<Express> plans = fidParam != null
-                ? QuerySupport.safe(ExpressSchema.EXPRESS,
-                () -> expressMapper.selectExpressByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(ExpressSchema.EXPRESS,
-                () -> expressMapper.selectExpressByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectExpressByFid(fidParam, bounds(1)), warnings, log)
+                : QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectExpressByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
 
         if (plans.isEmpty()) {
-            result.setMessage(fidParam != null
-                    ? "未找到内码为 " + query.getFid() + " 的采购物流单"
-                    : "未找到单据编号为 " + no + " 的采购物流单");
+            result.setMessage(fidParam != null ? "未找到内码为 " + query.getFid() + " 的采购物流单" : "未找到单据编号为 " + no + " 的采购物流单");
         } else if (fidParam == null && plans.size() > 1) {
             result.setAmbiguous(true);
             result.setCandidates(candidatesFromPlans(plans));
@@ -169,22 +165,18 @@ public class ExpressService {
     private void buildDossier(Express plan, ExpressDossierVO result, List<String> warnings) {
         final Object fid = plan.getFid();
 
-        List<ExpressTc> planTc = QuerySupport.safe(ExpressSchema.EXPRESS_TC,
-                () -> expressMapper.selectExpressTc(fid, bounds()), warnings, log);
-        List<ContainerEntry> containerEntries = QuerySupport.safe(ExpressSchema.CONTAINER_ENTRY,
-                () -> sharedMapper.selectContainerEntries(fid, bounds()), warnings, log);
+        List<ExpressTc> planTc = QuerySupport.safe(ExpressSchema.EXPRESS_TC, () -> expressMapper.selectExpressTc(fid, bounds()), warnings, log);
+        List<ContainerEntry> containerEntries = QuerySupport.safe(ExpressSchema.CONTAINER_ENTRY, () -> sharedMapper.selectContainerEntries(fid, bounds()), warnings, log);
         List<Object> entryIds = RowUtils.distinctValues(containerEntries, ContainerEntry::getFentryid);
         // 没有物料明细时跳过箱件查询，避免生成非法的 IN () 条件
         List<Subentryentity> subEntries = entryIds.isEmpty()
                 ? Collections.emptyList()
-                : QuerySupport.safe(ExpressSchema.SUB_ENTRY,
-                () -> sharedMapper.selectSubEntries(entryIds, bounds()), warnings, log);
+                : QuerySupport.safe(ExpressSchema.SUB_ENTRY, () -> sharedMapper.selectSubEntries(entryIds, bounds()), warnings, log);
 
         Map<String, List<Subentryentity>> subGroup = RowUtils.groupBy(subEntries, Subentryentity::getFentryid);
 
         Map<String, TableSectionVO> tables = new LinkedHashMap<>();
-        putSection(tables, def(ExpressSchema.EXPRESS),
-                Collections.singletonList(plan), Express.class);
+        putSection(tables, def(ExpressSchema.EXPRESS), Collections.singletonList(plan), Express.class);
         putSection(tables, def(ExpressSchema.EXPRESS_TC), planTc, ExpressTc.class);
         putSection(tables, def(ExpressSchema.CONTAINER_ENTRY), containerEntries, ContainerEntry.class);
         putSection(tables, def(ExpressSchema.SUB_ENTRY), subEntries, Subentryentity.class);

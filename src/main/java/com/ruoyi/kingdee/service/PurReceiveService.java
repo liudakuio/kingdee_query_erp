@@ -67,7 +67,9 @@ public class PurReceiveService {
         this.environment = environment;
     }
 
-    /** 供前端渲染使用的表字典、字段字典、关联关系。 */
+    /**
+     * 供前端渲染使用的表字典、字段字典、关联关系。
+     */
     public SchemaMetaVO meta() {
         SchemaMetaVO meta = new SchemaMetaVO();
         meta.setTables(new ArrayList<>(PurReceiveSchema.tableVOs()));
@@ -77,7 +79,9 @@ public class PurReceiveService {
         return meta;
     }
 
-    /** 单号联想 / 模糊查询。 */
+    /**
+     * 单号联想 / 模糊查询。
+     */
     public List<BillCandidateVO> suggest(String keyword) {
         return suggest(keyword, new ArrayList<String>());
     }
@@ -94,7 +98,9 @@ public class PurReceiveService {
         return candidatesFromRows(rows);
     }
 
-    /** 兼容内部调用的简化入口；Controller 统一使用 {@link #query(PurReceiveQuery)}。 */
+    /**
+     * 兼容内部调用的简化入口；Controller 统一使用 {@link #query(PurReceiveQuery)}。
+     */
     public PurReceiveDossierVO query(String billNo, String fid, boolean fuzzy) {
         PurReceiveQuery query = new PurReceiveQuery();
         query.setBillNo(billNo);
@@ -140,10 +146,8 @@ public class PurReceiveService {
         }
 
         List<PurRecBill> bills = fidParam != null
-                ? QuerySupport.safe(PurReceiveSchema.BILL,
-                () -> mapper.selectBillsByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(PurReceiveSchema.BILL,
-                () -> mapper.selectBillsByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectBillsByFid(fidParam, bounds(1)), warnings, log)
+                : QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectBillsByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
 
         if (bills.isEmpty()) {
             result.setMessage(fidParam != null
@@ -203,7 +207,9 @@ public class PurReceiveService {
         return BatchAssembler.build(items, totals, "demo");
     }
 
-    /** 构造单项查询失败结果，保持批量结果结构一致。 */
+    /**
+     * 构造单项查询失败结果，保持批量结果结构一致。
+     */
     private PurReceiveDossierVO errorItem(String billNo, String message) {
         PurReceiveDossierVO item = new PurReceiveDossierVO();
         item.setBillNo(billNo);
@@ -212,38 +218,28 @@ public class PurReceiveService {
         return item;
     }
 
-    /** 逐表查询并组装一个完整档案。 */
+    /**
+     * 逐表查询并组装一个完整档案。
+     */
     private void buildDossier(PurRecBill bill, PurReceiveDossierVO result, List<String> warnings) {
         final Object fid = bill.getFid();
 
-        List<PurRecBillL> billL = QuerySupport.safe(PurReceiveSchema.BILL_L,
-                () -> mapper.selectBillL(fid, bounds()), warnings, log);
-        List<PurRecBillLk> billLk = QuerySupport.safe(PurReceiveSchema.BILL_LK,
-                () -> mapper.selectBillLk(fid, bounds()), warnings, log);
-        List<PurRecBillTc> billTc = QuerySupport.safe(PurReceiveSchema.BILL_TC,
-                () -> mapper.selectBillTc(fid, bounds()), warnings, log);
-        List<PurRecBillWb> billWb = QuerySupport.safe(PurReceiveSchema.BILL_WB,
-                () -> mapper.selectBillWb(fid, bounds()), warnings, log);
-        List<PurRecBillF> billF = QuerySupport.safe(PurReceiveSchema.BILL_F,
-                () -> mapper.selectBillF(fid, bounds()), warnings, log);
-        List<PurRecBillEntry> entries = QuerySupport.safe(PurReceiveSchema.ENTRY,
-                () -> mapper.selectEntries(fid, bounds()), warnings, log);
+        List<PurRecBillL> billL = QuerySupport.safe(PurReceiveSchema.BILL_L, () -> mapper.selectBillL(fid, bounds()), warnings, log);
+        List<PurRecBillLk> billLk = QuerySupport.safe(PurReceiveSchema.BILL_LK, () -> mapper.selectBillLk(fid, bounds()), warnings, log);
+        List<PurRecBillTc> billTc = QuerySupport.safe(PurReceiveSchema.BILL_TC, () -> mapper.selectBillTc(fid, bounds()), warnings, log);
+        List<PurRecBillWb> billWb = QuerySupport.safe(PurReceiveSchema.BILL_WB, () -> mapper.selectBillWb(fid, bounds()), warnings, log);
+        List<PurRecBillF> billF = QuerySupport.safe(PurReceiveSchema.BILL_F, () -> mapper.selectBillF(fid, bounds()), warnings, log);
+        List<PurRecBillEntry> entries = QuerySupport.safe(PurReceiveSchema.ENTRY, () -> mapper.selectEntries(fid, bounds()), warnings, log);
 
         List<Object> entryIds = RowUtils.distinctValues(entries, PurRecBillEntry::getFentryid);
-        List<PurRecBillEntryL> entryL = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_L, entryIds,
-                mapper::selectEntryL, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
-        List<PurRecBillEntryR> entryR = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_R, entryIds,
-                mapper::selectEntryR, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
-        List<PurRecBillEntryLk> entryLk = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_LK, entryIds,
-                mapper::selectEntryLk, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
-        List<ReceivingBoxEntry> boxes = QuerySupport.queryByKeys(PurReceiveSchema.BOX, entryIds,
-                mapper::selectBoxes, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
-        List<CgShEntryAttach> attach = QuerySupport.queryByKeys(PurReceiveSchema.ATTACH, entryIds,
-                mapper::selectAttachList, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<PurRecBillEntryL> entryL = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_L, entryIds, mapper::selectEntryL, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<PurRecBillEntryR> entryR = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_R, entryIds, mapper::selectEntryR, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<PurRecBillEntryLk> entryLk = QuerySupport.queryByKeys(PurReceiveSchema.ENTRY_LK, entryIds, mapper::selectEntryLk, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<ReceivingBoxEntry> boxes = QuerySupport.queryByKeys(PurReceiveSchema.BOX, entryIds, mapper::selectBoxes, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<CgShEntryAttach> attach = QuerySupport.queryByKeys(PurReceiveSchema.ATTACH, entryIds, mapper::selectAttachList, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
 
         List<Object> detailIds = RowUtils.distinctValues(attach, CgShEntryAttach::getFdetailid);
-        List<CgEntryAttachment> attachFiles = QuerySupport.queryByKeys(PurReceiveSchema.ATTACH_FILE, detailIds,
-                mapper::selectAttachFiles, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
+        List<CgEntryAttachment> attachFiles = QuerySupport.queryByKeys(PurReceiveSchema.ATTACH_FILE, detailIds, mapper::selectAttachFiles, warnings, log, properties.getInClauseBatchSize(), properties.getMaxRowsPerTable());
 
         Map<String, TableSectionVO> tables = new LinkedHashMap<>();
         putSection(tables, def(PurReceiveSchema.BILL), Collections.singletonList(bill), PurRecBill.class);
@@ -330,19 +326,25 @@ public class PurReceiveService {
         result.setSummary(summary);
     }
 
-    /** 把 Schema 中的表定义转换为业务 VO。 */
+    /**
+     * 把 Schema 中的表定义转换为业务 VO。
+     */
     private TableDefVO def(String tableName) {
         return PurReceiveSchema.tableDef(tableName).toVO();
     }
 
-    /** 按表定义构造数据块，避免手工拼 count/columns/rows 等动态 key。 */
+    /**
+     * 按表定义构造数据块，避免手工拼 count/columns/rows 等动态 key。
+     */
     private void putSection(Map<String, TableSectionVO> tables,
                             TableDefVO def, List<?> rows, Class<?> entityType) {
         TableSectionVO section = DossierAssembler.section(def, rows, entityType, properties.getMaxRowsPerTable());
         tables.put(def.getName(), section);
     }
 
-    /** 主表实体转换为候选单据 VO。 */
+    /**
+     * 主表实体转换为候选单据 VO。
+     */
     private List<BillCandidateVO> candidatesFromRows(List<PurRecBill> rows) {
         List<BillCandidateVO> candidates = new ArrayList<>();
         for (PurRecBill row : rows) {
