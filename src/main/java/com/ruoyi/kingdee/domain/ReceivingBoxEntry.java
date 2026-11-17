@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
@@ -10,6 +11,7 @@ import java.math.BigDecimal;
  * 字段按《金蝶采购收货单数据库 ER 图》全部 9 列定义，顺序与 ER 图一致。
  */
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ReceivingBoxEntry {
 

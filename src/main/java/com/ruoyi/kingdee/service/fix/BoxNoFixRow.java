@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.service.fix;
 
+import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import lombok.Data;
 
 import java.util.LinkedHashMap;
@@ -11,8 +12,8 @@ import java.util.Map;
 @Data
 public class BoxNoFixRow {
 
-    /** 当前查询到的箱号信息行（key = 数据库列名） */
-    private Map<String, Object> current = new LinkedHashMap<>();
+    /** 当前查询到的箱号信息行（采购收货单箱号实体） */
+    private ReceivingBoxEntry current;
     /** 上传表中命中的修正值（key = Excel 列名） */
     private Map<String, String> applied = new LinkedHashMap<>();
     /** 是否在上传表中找到对应箱号 */
@@ -20,9 +21,9 @@ public class BoxNoFixRow {
     /** 处理说明，例如「已按上传表修正」「上传表中未找到该箱号」 */
     private String message;
 
-    public static BoxNoFixRow of(Map<String, Object> current) {
+    public static BoxNoFixRow of(ReceivingBoxEntry current) {
         BoxNoFixRow row = new BoxNoFixRow();
-        row.setCurrent(current == null ? new LinkedHashMap<>() : current);
+        row.setCurrent(current);
         return row;
     }
 }

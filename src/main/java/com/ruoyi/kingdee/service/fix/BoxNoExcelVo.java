@@ -1,7 +1,10 @@
 package com.ruoyi.kingdee.service.fix;
 
+import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import lombok.Data;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -27,18 +30,32 @@ public class BoxNoExcelVo {
         if (row == null) {
             return vo;
         }
-        Map<String, Object> current = row.getCurrent();
-        if (current != null) {
-            Map<String, String> values = new LinkedHashMap<>();
-            for (Map.Entry<String, Object> entry : current.entrySet()) {
-                values.put(entry.getKey(), entry.getValue() == null ? "" : String.valueOf(entry.getValue()));
-            }
-            vo.setValues(values);
-        }
+        vo.setValues(valuesOf(row.getCurrent()));
         String boxNo = DefaultBoxNoFixHandler.valueOfColumn(row.getApplied(), DefaultBoxNoFixHandler.BOX_NO_KEYS);
         vo.setCorrectBoxNo(boxNo == null ? "" : boxNo);
         vo.setMessage(row.getMessage() == null ? "" : row.getMessage());
         vo.setMatched(row.isMatched());
         return vo;
+    }
+
+    /** 实体字段转列文本（key = 数据库列名，顺序与实体声明一致） */
+    private static Map<String, String> valuesOf(ReceivingBoxEntry entity) {
+        Map<String, String> values = new LinkedHashMap<>();
+        if (entity == null) {
+            return values;
+        }
+        for (Field field : ReceivingBoxEntry.class.getDeclaredFields()) {
+            if (field.isSynthetic() || Modifier.isStatic(field.getModifiers())) {
+                continue;
+            }
+            try {
+                field.setAccessible(true);
+                Object value = field.get(entity);
+                values.put(field.getName(), value == null ? "" : String.valueOf(value));
+            } catch (IllegalAccessException e) {
+                // 单个字段读不到不影响整行导出
+            }
+        }
+        return values;
     }
 }

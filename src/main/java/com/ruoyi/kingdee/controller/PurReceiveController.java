@@ -3,6 +3,7 @@ package com.ruoyi.kingdee.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.kingdee.common.AjaxResult;
+import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import com.ruoyi.kingdee.service.BoxNoFixService;
 import com.ruoyi.kingdee.service.ExcelExportService;
 import com.ruoyi.kingdee.service.PurReceiveService;
@@ -122,13 +123,13 @@ public class PurReceiveController {
         writeExcel(response, data, "箱号信息修正结果_" + System.currentTimeMillis() + ".xlsx");
     }
 
-    /** 解析前端传来的当前箱号信息行（JSON 数组字符串） */
-    private List<Map<String, Object>> parseRows(String rows) {
+    /** 解析前端传来的当前箱号信息行（JSON 数组字符串），直接还原为箱号实体 */
+    private List<ReceivingBoxEntry> parseRows(String rows) {
         if (rows == null || rows.trim().isEmpty()) {
             throw new IllegalArgumentException("缺少当前箱号信息数据，请先查询后再上传");
         }
         try {
-            return objectMapper.readValue(rows, new TypeReference<List<Map<String, Object>>>() {
+            return objectMapper.readValue(rows, new TypeReference<List<ReceivingBoxEntry>>() {
             });
         } catch (Exception e) {
             throw new IllegalArgumentException("箱号信息数据格式不正确：" + e.getMessage());
