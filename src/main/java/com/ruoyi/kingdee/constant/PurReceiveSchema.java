@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.constant;
 
+import com.ruoyi.kingdee.vo.RelationVO;
+import com.ruoyi.kingdee.vo.TableDefVO;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -56,6 +59,10 @@ public final class PurReceiveSchema {
             return scope;
         }
 
+        /**
+         * 旧 Map 输出，仅保留给历史调用方；业务接口统一使用 {@link #toVO()}。
+         */
+        @Deprecated
         public Map<String, Object> toMap() {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("name", name);
@@ -63,6 +70,11 @@ public final class PurReceiveSchema {
             map.put("joinKey", joinKey);
             map.put("scope", scope);
             return map;
+        }
+
+        /** 转换为强类型表定义 VO，字段名与旧 Map 完全一致。 */
+        public TableDefVO toVO() {
+            return new TableDefVO(name, label, joinKey, scope);
         }
     }
 
@@ -93,6 +105,15 @@ public final class PurReceiveSchema {
         return TABLE_DEFS;
     }
 
+    /** 转换为业务接口使用的强类型表定义列表。 */
+    public static List<TableDefVO> tableVOs() {
+        List<TableDefVO> result = new ArrayList<>();
+        for (TableDef def : TABLE_DEFS) {
+            result.add(def.toVO());
+        }
+        return result;
+    }
+
     /** 按表名取表定义，供 Service 生成各表的渲染分区。 */
     public static TableDef tableDef(String name) {
         for (TableDef def : TABLE_DEFS) {
@@ -103,7 +124,8 @@ public final class PurReceiveSchema {
         throw new IllegalArgumentException("未定义的表：" + name);
     }
 
-    /** 文档第 3 节的 12 条关联关系。 */
+    /** 文档第 3 节的 12 条关联关系（旧 Map 输出，仅保留兼容）。 */
+    @Deprecated
     public static List<Map<String, Object>> relations() {
         List<Map<String, Object>> relations = new ArrayList<>();
         addRelation(relations, BILL, "fid", BILL_L, "fid", "One", "主表 → 多语言表");
@@ -121,6 +143,24 @@ public final class PurReceiveSchema {
         return relations;
     }
 
+    /** 文档第 3 节的 12 条关联关系（业务接口使用）。 */
+    public static List<RelationVO> relationVOs() {
+        List<RelationVO> relations = new ArrayList<>();
+        addRelationVO(relations, BILL, "fid", BILL_L, "fid", "One", "主表 → 多语言表");
+        addRelationVO(relations, BILL, "fid", BILL_LK, "fid", "ZeroOne", "主表 → 关联子实体表");
+        addRelationVO(relations, BILL, "fid", BILL_TC, "fid", "ZeroOne", "主表 → 关联追踪表");
+        addRelationVO(relations, BILL, "fid", BILL_WB, "fid", "ZeroOne", "主表 → 反写记录表");
+        addRelationVO(relations, BILL, "fid", BILL_F, "fid", "ZeroOne", "主表 → 分表");
+        addRelationVO(relations, BILL, "fid", ENTRY, "fid", "OneN", "主表 → 物料明细（核心链路）");
+        addRelationVO(relations, ENTRY, "fentryid", ENTRY_L, "fentryid", "One", "明细 → 明细多语言表");
+        addRelationVO(relations, ENTRY, "fentryid", ENTRY_R, "fentryid", "ZeroOne", "明细 → 明细分表");
+        addRelationVO(relations, ENTRY, "fentryid", ENTRY_LK, "fentryid", "ZeroOne", "明细 → 明细关联子实体表");
+        addRelationVO(relations, ENTRY, "fentryid", BOX, "fentryid", "OneN", "明细 → 收货箱明细（一对多）");
+        addRelationVO(relations, ENTRY, "fentryid", ATTACH, "fentryid", "OneN", "明细 → 附件清单（一对多）");
+        addRelationVO(relations, ATTACH, "fdetailid", ATTACH_FILE, "fdetailid", "ZeroOne", "附件清单 → 附件表");
+        return relations;
+    }
+
     private static void addRelation(List<Map<String, Object>> relations, String from, String fromKey,
                                     String to, String toKey, String cardinality, String note) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -131,6 +171,11 @@ public final class PurReceiveSchema {
         item.put("cardinality", cardinality);
         item.put("note", note);
         relations.add(item);
+    }
+
+    private static void addRelationVO(List<RelationVO> relations, String from, String fromKey,
+                                      String to, String toKey, String cardinality, String note) {
+        relations.add(new RelationVO(from, fromKey, to, toKey, cardinality, note));
     }
 
     /**

@@ -4,6 +4,9 @@ import java.util.HashMap;
 
 /**
  * 与若依前端 request.js 保持一致的响应体：{code, msg, data}。
+ *
+ * <p>协议例外：为兼容若依约定，本类继承 HashMap 并以 Object 承载 data；
+ * 业务代码只允许传入明确 DTO/VO/实体，不得把裸 Map 作为 data。</p>
  */
 public class AjaxResult extends HashMap<String, Object> {
 

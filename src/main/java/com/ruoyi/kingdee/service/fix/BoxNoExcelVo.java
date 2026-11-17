@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.service.fix;
 
+import com.ruoyi.kingdee.constant.BoxNoColumnAliases;
 import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
 import lombok.Data;
 
@@ -31,7 +32,7 @@ public class BoxNoExcelVo {
             return vo;
         }
         vo.setValues(valuesOf(row.getCurrent()));
-        String boxNo = DefaultBoxNoFixHandler.valueOfColumn(row.getApplied(), DefaultBoxNoFixHandler.BOX_NO_KEYS);
+        String boxNo = DefaultBoxNoFixHandler.valueOfColumn(row.getApplied(), BoxNoColumnAliases.BOX_NO_KEYS);
         vo.setCorrectBoxNo(boxNo == null ? "" : boxNo);
         vo.setMessage(row.getMessage() == null ? "" : row.getMessage());
         vo.setMatched(row.isMatched());

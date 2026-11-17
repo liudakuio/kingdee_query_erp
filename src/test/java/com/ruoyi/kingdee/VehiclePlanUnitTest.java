@@ -8,6 +8,7 @@ import com.ruoyi.kingdee.domain.VehiclePlan;
 import com.ruoyi.kingdee.mapper.vehicleplan.VehiclePlanMapper;
 import com.ruoyi.kingdee.service.VehiclePlanService;
 import com.ruoyi.kingdee.util.BillNos;
+import com.ruoyi.kingdee.vo.BatchResultVO;
 import org.apache.ibatis.session.RowBounds;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,6 @@ import org.springframework.core.env.Environment;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -27,8 +27,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * 采购车辆计划查询的纯逻辑测试：单号解析与校验、批量拆分与拒绝、summary 合计口径。
- * 不依赖真实金蝶库，Mapper 用 mock 替身。
+ * 采购车辆计划查询的纯逻辑测试：单号解析、批量拒绝与 summary 合计口径。
+ * 断言读取强类型 VO，避免测试再依赖动态 Map key。
  */
 class VehiclePlanUnitTest {
 
@@ -69,17 +69,14 @@ class VehiclePlanUnitTest {
 
     @Test
     void queryBatchShouldMarkIllegalBillButKeepOthers() {
-        Map<String, Object> batch = service.queryBatch("CL-001,A'B");
-        assertEquals(2, ((Number) batch.get("total")).intValue());
+        BatchResultVO batch = service.queryBatch("CL-001,A'B");
+        assertEquals(2, batch.getTotal());
         // CL-001 未命中（mock 未返回数据），A'B 非法字符被标记为 error
-        assertEquals(0, ((Number) batch.get("foundCount")).intValue());
-        assertEquals(2, ((Number) batch.get("missingCount")).intValue());
-        List<?> items = (List<?>) batch.get("items");
-        Map<?, ?> notFound = (Map<?, ?>) items.get(0);
-        assertEquals(Boolean.FALSE, notFound.get("found"));
-        Map<?, ?> illegal = (Map<?, ?>) items.get(1);
-        assertEquals(Boolean.FALSE, illegal.get("found"));
-        assertEquals(Boolean.TRUE, illegal.get("error"));
+        assertEquals(0, batch.getFoundCount());
+        assertEquals(2, batch.getMissingCount());
+        assertEquals(false, batch.getItems().get(0).isFound());
+        assertEquals(false, batch.getItems().get(1).isFound());
+        assertEquals(Boolean.TRUE, batch.getItems().get(1).getError());
     }
 
     @Test
@@ -112,11 +109,10 @@ class VehiclePlanUnitTest {
         when(mapper.selectVehicleEntries(any(), any(RowBounds.class)))
                 .thenReturn(Collections.singletonList(vehicle));
 
-        Map<String, Object> batch = service.queryBatch("CL-001");
-        assertEquals(1, ((Number) batch.get("foundCount")).intValue());
-        Map<?, ?> totals = (Map<?, ?>) batch.get("totals");
-        assertEquals(2L, ((Number) totals.get("entryCount")).longValue());
-        assertEquals(2L, ((Number) totals.get("boxCount")).longValue());
-        assertEquals(1L, ((Number) totals.get("vehicleCount")).longValue());
+        BatchResultVO batch = service.queryBatch("CL-001");
+        assertEquals(1, batch.getFoundCount());
+        assertEquals(2L, batch.getTotals().getEntryCount());
+        assertEquals(2L, batch.getTotals().getBoxCount());
+        assertEquals(1L, batch.getTotals().getVehicleCount());
     }
 }

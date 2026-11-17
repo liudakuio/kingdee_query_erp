@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 收货箱明细 tk_usp_receivingboxentry 的导出定制示例。
@@ -26,22 +25,17 @@ public class BoxEntryExportCustomizer implements TableExportCustomizer {
 
     @Override
     public List<CustomColumn> extraColumns() {
-        return Collections.singletonList(CustomColumn.of(HEADER, context -> {
-            Map<String, Object> row = context.getRow();
-            return "INSERT INTO tk_usp_receivingboxentry (fentryid,fdetailid,fseq,fk_usp_sendboxno,fk_usp_wxno,fk_usp_arrived,fk_usp_srcsubentryid,fk_usp_detailqty,fk_usp_realqty) VALUES (\n" +
-                    text(row.get("fentryid")) + ",\n" +
-                    text(row.get("fdetailid")) + ",\n" +
-                    text(row.get("fseq")) + ",\n" +
-                    text(row.get("fk_usp_sendboxno")) + ",\n" +
-                    text(row.get("fk_usp_wxno")) + ",\n" +
-                    text(row.get("fk_usp_arrived")) + ",\n" +
-                    text(row.get("fk_usp_srcsubentryid")) + ",\n" +
-                    text(row.get("fk_usp_detailqty")) + ",\n" +
-                    text(row.get("fk_usp_realqty")) + ";";
-        }));
-    }
-
-    private String text(Object value) {
-        return value == null ? "" : String.valueOf(value);
+        return Collections.singletonList(CustomColumn.of(HEADER, context ->
+                "INSERT INTO tk_usp_receivingboxentry (fentryid,fdetailid,fseq,fk_usp_sendboxno,fk_usp_wxno,fk_usp_arrived,fk_usp_srcsubentryid,fk_usp_detailqty,fk_usp_realqty) VALUES (\n" +
+                        context.text("fentryid") + ",\n" +
+                        context.text("fdetailid") + ",\n" +
+                        context.text("fseq") + ",\n" +
+                        context.text("fk_usp_sendboxno") + ",\n" +
+                        context.text("fk_usp_wxno") + ",\n" +
+                        context.text("fk_usp_arrived") + ",\n" +
+                        context.text("fk_usp_srcsubentryid") + ",\n" +
+                        context.text("fk_usp_detailqty") + ",\n" +
+                        context.text("fk_usp_realqty") + ";"
+        ));
     }
 }

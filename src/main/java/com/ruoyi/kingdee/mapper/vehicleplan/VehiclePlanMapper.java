@@ -13,6 +13,9 @@ import java.util.List;
 /**
  * 采购车辆计划查询：5 张表全部使用固定表名 + #{} 绑定参数，不做任何表名/列名拼接。
  * 关联链路：主表 fid → 物料信息 fentryid → 箱件信息；主表 fid → 车辆明细。
+ *
+ * <p>fid/ids 保留 Object/List&lt;Object&gt; 是 SQL 绑定边界要求：数字内码按 Long 绑定，
+ * 非数字内码按 String 绑定；业务层通过 RowUtils.keyParam 归一化，VO 边界统一输出 String。</p>
  */
 public interface VehiclePlanMapper {
 

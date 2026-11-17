@@ -1,8 +1,9 @@
 package com.ruoyi.kingdee.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.kingdee.constant.ExpressSchema;
 import com.ruoyi.kingdee.service.export.TableExportCustomizer;
+import com.ruoyi.kingdee.vo.BatchResultVO;
+import com.ruoyi.kingdee.vo.DossierResultVO;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -11,27 +12,29 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 采购物流单导出：复用 AbstractTableExportService 的通用导出逻辑，
- * 本类只提供档案查询、可导出表名与字段标签。
+ * 采购物流单导出：复用通用导出逻辑，本类只提供查询入口、表名与字段标签。
  */
 @Service
 public class ExpressExcelService extends AbstractTableExportService {
 
+    /** 导出全部表。 */
+    public static final String ALL_TABLES = AbstractTableExportService.ALL_TABLES;
+
     private final ExpressService queryService;
 
-    public ExpressExcelService(ExpressService queryService, ObjectMapper objectMapper,
-                                ObjectProvider<TableExportCustomizer> customizers) {
-        super(objectMapper, customizers);
+    public ExpressExcelService(ExpressService queryService,
+                               ObjectProvider<TableExportCustomizer> customizers) {
+        super(customizers);
         this.queryService = queryService;
     }
 
     @Override
-    protected Map<String, Object> queryDossier(String billNo, String fid) {
+    protected DossierResultVO queryDossier(String billNo, String fid) {
         return queryService.query(billNo, fid);
     }
 
     @Override
-    protected Map<String, Object> queryBatchDossier(String billNos) {
+    protected BatchResultVO queryBatchDossier(String billNos) {
         return queryService.queryBatch(billNos);
     }
 

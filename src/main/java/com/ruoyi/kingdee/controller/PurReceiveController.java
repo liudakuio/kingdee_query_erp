@@ -1,25 +1,23 @@
 package com.ruoyi.kingdee.controller;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.kingdee.common.AjaxResult;
-import com.ruoyi.kingdee.domain.ReceivingBoxEntry;
+import com.ruoyi.kingdee.dto.BatchBillQuery;
+import com.ruoyi.kingdee.dto.FixBoxNoRequest;
+import com.ruoyi.kingdee.dto.PurReceiveQuery;
 import com.ruoyi.kingdee.service.BoxNoFixService;
 import com.ruoyi.kingdee.service.ExcelExportService;
 import com.ruoyi.kingdee.service.PurReceiveService;
 import com.ruoyi.kingdee.util.BillNos;
+import com.ruoyi.kingdee.util.ExcelResponseWriter;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 采购收货单查询接口。响应体与若依前端 request.js 约定一致：{code, msg, data}。
@@ -41,20 +39,16 @@ public class PurReceiveController {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * 表字典、字段字典和 12 条关联关系，前端用于生成动态列标题。
-     */
+    /** 表字典、字段字典和 12 条关联关系，前端用于生成动态列标题。 */
     @GetMapping("/meta")
     public AjaxResult meta() {
         return AjaxResult.success(service.meta());
     }
 
-    /**
-     * 单号联想 / 模糊匹配候选单据。
-     */
+    /** 单号联想 / 模糊匹配候选单据。 */
     @GetMapping("/list")
-    public AjaxResult list(@RequestParam(name = "billNo", required = false) String billNo) {
-        return AjaxResult.success(service.suggest(billNo));
+    public AjaxResult list(@ModelAttribute PurReceiveQuery query) {
+        return AjaxResult.success(service.suggest(query.getBillNo()));
     }
 
     /**
@@ -62,19 +56,17 @@ public class PurReceiveController {
      * fid 用于从重复单号候选中精确选择；fuzzy=true 时只返回候选单据列表。
      */
     @GetMapping("/query")
-    public AjaxResult query(@RequestParam(name = "billNo", required = false) String billNo,
-                            @RequestParam(name = "fid", required = false) String fid,
-                            @RequestParam(name = "fuzzy", required = false, defaultValue = "false") boolean fuzzy) {
-        return AjaxResult.success(service.query(billNo, fid, fuzzy));
+    public AjaxResult query(@ModelAttribute PurReceiveQuery query) {
+        return AjaxResult.success(service.query(query));
     }
 
     /**
-     * 批量查询：billNos 以中英文逗号分隔，返回批次汇总对象（数量、合计、mode）+ items 全量单据结果。
+     * 批量查询：billNos 以中英文逗号分隔，返回批次汇总对象 + items 全量单据结果。
      * 单个单号非法或未找到只标记该项，不影响其它单号。
      */
     @GetMapping("/queryBatch")
-    public AjaxResult queryBatch(@RequestParam(name = "billNos") String billNos) {
-        return AjaxResult.success(service.queryBatch(billNos));
+    public AjaxResult queryBatch(@ModelAttribute BatchBillQuery query) {
+        return AjaxResult.success(service.queryBatch(query.getBillNos()));
     }
 
     /**
@@ -82,67 +74,36 @@ public class PurReceiveController {
      * 先生成完整文件再写响应头，查询失败时仍由 GlobalExceptionHandler 返回 JSON 提示。
      */
     @GetMapping("/export")
-    public void export(@RequestParam(name = "billNo", required = false) String billNo,
-                       @RequestParam(name = "fid", required = false) String fid,
-                       @RequestParam(name = "table", required = false) String table,
-                       HttpServletResponse response) throws IOException {
-        byte[] data = excelExportService.build(billNo, fid, table);
-        String subject = billNo != null && !billNo.trim().isEmpty() ? billNo.trim()
-                : fid != null && !fid.trim().isEmpty() ? fid.trim() : "query";
-        writeExcel(response, data, "采购收货单_" + subject + "_" + scopeOf(table) + ".xlsx");
+    public void export(@ModelAttribute PurReceiveQuery query, HttpServletResponse response) throws IOException {
+        byte[] data = excelExportService.build(query.getBillNo(), query.getFid(), query.getTable());
+        String subject = query.getBillNo() != null && !query.getBillNo().trim().isEmpty()
+                ? query.getBillNo().trim()
+                : (query.getFid() != null && !query.getFid().trim().isEmpty() ? query.getFid().trim() : "query");
+        ExcelResponseWriter.write(response, data,
+                "采购收货单_" + subject + "_" + ExcelResponseWriter.scopeOf(
+                        query.getTable(), ExcelExportService.ALL_TABLES) + ".xlsx");
     }
 
     /**
      * 批量导出 Excel：billNos 以逗号分隔，每张表只生成一个工作表，
-     * 多个单据的数据顺序追加并以「单据编号」列标识来源。表级自定义列对每一行分别生效。
+     * 多个单据的数据顺序追加并以「单据编号」列标识来源。
      */
     @GetMapping("/exportBatch")
-    public void exportBatch(@RequestParam(name = "billNos") String billNos,
-                            @RequestParam(name = "table", required = false) String table,
-                            HttpServletResponse response) throws IOException {
-        byte[] data = excelExportService.buildBatch(billNos, table);
-        writeExcel(response, data,
-                "采购收货单_批量" + BillNos.parse(billNos).size() + "单_" + scopeOf(table) + ".xlsx");
+    public void exportBatch(@ModelAttribute BatchBillQuery query, HttpServletResponse response) throws IOException {
+        byte[] data = excelExportService.buildBatch(query.getBillNos(), query.getTable());
+        ExcelResponseWriter.write(response, data,
+                "采购收货单_批量" + BillNos.parse(query.getBillNos()).size() + "单_" + ExcelResponseWriter.scopeOf(
+                        query.getTable(), ExcelExportService.ALL_TABLES) + ".xlsx");
     }
 
-    private String scopeOf(String table) {
-        return table == null || table.trim().isEmpty()
-                || ExcelExportService.ALL_TABLES.equalsIgnoreCase(table.trim()) ? "全部表" : table.trim();
-    }
-
-    /** 统一设置下载响应头，文件名同时兼容 filename 与 RFC 5987 的 filename*。 */
     /**
      * 修改箱号信息：上传正确的箱号信息 Excel + 当前查询到的箱号信息行，后端处理后返回结果 Excel。
      * 处理规则由 service/fix 下的 BoxNoFixHandler 扩展点决定。
      */
     @PostMapping("/fixBoxNo")
-    public void fixBoxNo(@RequestParam("file") MultipartFile file,
-                         @RequestParam("rows") String rows,
-                         HttpServletResponse response) throws IOException {
-        byte[] data = boxNoFixService.fix(file, parseRows(rows));
-        writeExcel(response, data, "箱号信息修正结果_" + System.currentTimeMillis() + ".xlsx");
-    }
-
-    /** 解析前端传来的当前箱号信息行（JSON 数组字符串），直接还原为箱号实体 */
-    private List<ReceivingBoxEntry> parseRows(String rows) {
-        if (rows == null || rows.trim().isEmpty()) {
-            throw new IllegalArgumentException("缺少当前箱号信息数据，请先查询后再上传");
-        }
-        try {
-            return objectMapper.readValue(rows, new TypeReference<List<ReceivingBoxEntry>>() {
-            });
-        } catch (Exception e) {
-            throw new IllegalArgumentException("箱号信息数据格式不正确：" + e.getMessage());
-        }
-    }
-
-    private void writeExcel(HttpServletResponse response, byte[] data, String rawFileName) throws IOException {
-        String fileName = URLEncoder.encode(rawFileName, "UTF-8").replace("+", "%20");
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setCharacterEncoding("UTF-8");
-        response.setContentLength(data.length);
-        response.setHeader("Content-Disposition",
-                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + fileName);
-        response.getOutputStream().write(data);
+    public void fixBoxNo(@ModelAttribute FixBoxNoRequest request, HttpServletResponse response) throws IOException {
+        byte[] data = boxNoFixService.fix(request.getFile(), request.parseRows(objectMapper));
+        ExcelResponseWriter.write(response, data,
+                "箱号信息修正结果_" + System.currentTimeMillis() + ".xlsx");
     }
 }

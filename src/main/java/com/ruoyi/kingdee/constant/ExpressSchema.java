@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.constant;
 
+import com.ruoyi.kingdee.vo.RelationVO;
+import com.ruoyi.kingdee.vo.TableDefVO;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -51,6 +54,10 @@ public final class ExpressSchema {
             return scope;
         }
 
+        /**
+         * 旧 Map 输出，仅保留给历史调用方；业务接口统一使用 {@link #toVO()}。
+         */
+        @Deprecated
         public Map<String, Object> toMap() {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("name", name);
@@ -58,6 +65,11 @@ public final class ExpressSchema {
             map.put("joinKey", joinKey);
             map.put("scope", scope);
             return map;
+        }
+
+        /** 转换为强类型表定义 VO，字段名与旧 Map 完全一致。 */
+        public TableDefVO toVO() {
+            return new TableDefVO(name, label, joinKey, scope);
         }
     }
 
@@ -79,6 +91,15 @@ public final class ExpressSchema {
         return TABLE_DEFS;
     }
 
+    /** 转换为业务接口使用的强类型表定义列表。 */
+    public static List<TableDefVO> tableVOs() {
+        List<TableDefVO> result = new ArrayList<>();
+        for (TableDef def : TABLE_DEFS) {
+            result.add(def.toVO());
+        }
+        return result;
+    }
+
     /** 按表名取表定义，不存在时抛出可读提示。 */
     public static TableDef tableDef(String name) {
         for (TableDef def : TABLE_DEFS) {
@@ -89,12 +110,22 @@ public final class ExpressSchema {
         throw new IllegalArgumentException("未定义的表：" + name);
     }
 
-    /** ER 图中的 3 条关联关系。 */
+    /** ER 图中的 3 条关联关系（旧 Map 输出，仅保留兼容）。 */
+    @Deprecated
     public static List<Map<String, Object>> relations() {
         List<Map<String, Object>> relations = new ArrayList<>();
         addRelation(relations, EXPRESS, "fid", EXPRESS_TC, "fid", "ZeroOne", "主表 → 关联追踪表");
         addRelation(relations, EXPRESS, "fid", CONTAINER_ENTRY, "fid", "OneN", "主表 → 物料明细（核心链路）");
         addRelation(relations, CONTAINER_ENTRY, "fentryid", SUB_ENTRY, "fentryid", "OneN", "物料明细 → 箱件信息（一对多）");
+        return relations;
+    }
+
+    /** ER 图中的 3 条关联关系（业务接口使用）。 */
+    public static List<RelationVO> relationVOs() {
+        List<RelationVO> relations = new ArrayList<>();
+        addRelationVO(relations, EXPRESS, "fid", EXPRESS_TC, "fid", "ZeroOne", "主表 → 关联追踪表");
+        addRelationVO(relations, EXPRESS, "fid", CONTAINER_ENTRY, "fid", "OneN", "主表 → 物料明细（核心链路）");
+        addRelationVO(relations, CONTAINER_ENTRY, "fentryid", SUB_ENTRY, "fentryid", "OneN", "物料明细 → 箱件信息（一对多）");
         return relations;
     }
 
@@ -108,6 +139,11 @@ public final class ExpressSchema {
         item.put("cardinality", cardinality);
         item.put("note", note);
         relations.add(item);
+    }
+
+    private static void addRelationVO(List<RelationVO> relations, String from, String fromKey,
+                                      String to, String toKey, String cardinality, String note) {
+        relations.add(new RelationVO(from, fromKey, to, toKey, cardinality, note));
     }
 
     /** 字段中文标签：在车辆计划字典基础上补充采购物流单主表字段。 */

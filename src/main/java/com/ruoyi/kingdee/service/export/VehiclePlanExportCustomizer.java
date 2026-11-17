@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /** 采购车辆计划箱件信息表的导出定制示例，改这里即可调整导出列内容。 */
 @Component
@@ -20,14 +19,9 @@ public class VehiclePlanExportCustomizer implements TableExportCustomizer {
 
     @Override
     public List<CustomColumn> extraColumns() {
-        return Collections.singletonList(CustomColumn.of(HEADER, context -> {
-            Map<String, Object> row = context.getRow();
-            return text(row.get("fk_usp_sendboxno")) + " / " + text(row.get("fk_usp_volume"))
-                    + " / " + text(row.get("fk_usp_gross_weight"));
-        }));
-    }
-
-    private String text(Object value) {
-        return value == null ? "" : String.valueOf(value);
+        return Collections.singletonList(CustomColumn.of(HEADER, context ->
+                context.text("fk_usp_sendboxno") + " / " + context.text("fk_usp_volume")
+                        + " / " + context.text("fk_usp_gross_weight")
+        ));
     }
 }

@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 采购物流单的导出定制示例：为主表追加一列「运输路线」。
@@ -24,14 +23,9 @@ public class ExpressExportCustomizer implements TableExportCustomizer {
 
     @Override
     public List<CustomColumn> extraColumns() {
-        return Collections.singletonList(CustomColumn.of(HEADER, context -> {
-            Map<String, Object> row = context.getRow();
-            return text(row.get("fk_usp_starting")) + " → " + text(row.get("fk_usp_destination"))
-                    + "（" + text(row.get("fk_usp_transportnumber")) + "）";
-        }));
-    }
-
-    private String text(Object value) {
-        return value == null ? "" : String.valueOf(value);
+        return Collections.singletonList(CustomColumn.of(HEADER, context ->
+                context.text("fk_usp_starting") + " → " + context.text("fk_usp_destination")
+                        + "（" + context.text("fk_usp_transportnumber") + "）"
+        ));
     }
 }

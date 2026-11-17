@@ -5,6 +5,7 @@ import com.ruoyi.kingdee.service.fix.BoxNoExcelSupport;
 import com.ruoyi.kingdee.service.fix.BoxNoExcelVo;
 import com.ruoyi.kingdee.service.fix.BoxNoFixHandler;
 import com.ruoyi.kingdee.service.fix.BoxNoFixRow;
+import com.ruoyi.kingdee.service.fix.UploadedBoxNoRow;
 import com.ruoyi.kingdee.util.RowUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -12,7 +13,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 箱号信息修正的编排：解析上传表 → 调用处理逻辑扩展点 → 生成结果 Excel。
@@ -28,11 +28,11 @@ public class BoxNoFixService {
 
     /**
      * @param file        上传的正确箱号信息 Excel
-     * @param currentRows 当前查询到的箱号信息行（key = 数据库列名）
+     * @param currentRows 当前查询到的箱号信息实体行
      * @return 处理完成的结果 Excel 字节流
      */
     public byte[] fix(MultipartFile file, List<ReceivingBoxEntry> currentRows) throws IOException {
-        List<Map<String, String>> uploaded = BoxNoExcelSupport.read(file);
+        List<UploadedBoxNoRow> uploaded = BoxNoExcelSupport.read(file);
         if (uploaded.isEmpty()) {
             throw new IllegalArgumentException("上传的 Excel 没有可处理的数据行");
         }

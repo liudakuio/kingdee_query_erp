@@ -45,9 +45,11 @@ public final class BoxNoExcelSupport {
     }
 
     /**
-     * 解析上传的箱号信息表：取首个工作表，首行为表头（列名去空格），数据行按列名取值。
+     * 解析上传的箱号信息表：取首个工作表，首行为表头（列名去空格），数据行转换为实体。
+     *
+     * @return 上传行实体列表；业务层不再直接消费动态 Map
      */
-    public static List<Map<String, String>> read(MultipartFile file) throws IOException {
+    public static List<UploadedBoxNoRow> read(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("请上传箱号信息 Excel");
         }
@@ -64,7 +66,7 @@ public final class BoxNoExcelSupport {
             for (int c = header.getFirstCellNum(); c < header.getLastCellNum(); c++) {
                 headers.add(cellText(header.getCell(c)));
             }
-            List<Map<String, String>> rows = new ArrayList<>();
+            List<UploadedBoxNoRow> rows = new ArrayList<>();
             for (int r = sheet.getFirstRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
                 Row row = sheet.getRow(r);
                 if (row == null) {
@@ -82,7 +84,7 @@ public final class BoxNoExcelSupport {
                     blank = blank && value.isEmpty();
                 }
                 if (!blank) {
-                    rows.add(values);
+                    rows.add(UploadedBoxNoRow.of(values));
                 }
             }
             return rows;

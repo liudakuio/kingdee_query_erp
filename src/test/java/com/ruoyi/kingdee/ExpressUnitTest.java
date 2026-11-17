@@ -8,6 +8,8 @@ import com.ruoyi.kingdee.mapper.vehicleplan.ExpressMapper;
 import com.ruoyi.kingdee.mapper.vehicleplan.VehiclePlanMapper;
 import com.ruoyi.kingdee.service.ExpressService;
 import com.ruoyi.kingdee.util.BillNos;
+import com.ruoyi.kingdee.vo.BatchResultVO;
+import com.ruoyi.kingdee.vo.ExpressDossierVO;
 import org.apache.ibatis.session.RowBounds;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +18,6 @@ import org.springframework.core.env.Environment;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -28,7 +29,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * 采购物流单查询的纯逻辑测试：单号解析与校验、批量拆分与拒绝、summary 合计口径。
- * 不依赖真实金蝶库，Mapper 用 mock 替身。
+ * 不依赖真实金蝶库，Mapper 用 mock 替身；断言直接读取强类型 VO。
  */
 class ExpressUnitTest {
 
@@ -71,14 +72,12 @@ class ExpressUnitTest {
 
     @Test
     void queryBatchShouldMarkIllegalBillButKeepOthers() {
-        Map<String, Object> batch = service.queryBatch("WL-001,A'B");
-        assertEquals(2, ((Number) batch.get("total")).intValue());
-        assertEquals(0, ((Number) batch.get("foundCount")).intValue());
-        assertEquals(2, ((Number) batch.get("missingCount")).intValue());
-        List<?> items = (List<?>) batch.get("items");
-        Map<?, ?> illegal = (Map<?, ?>) items.get(1);
-        assertEquals(Boolean.FALSE, illegal.get("found"));
-        assertEquals(Boolean.TRUE, illegal.get("error"));
+        BatchResultVO batch = service.queryBatch("WL-001,A'B");
+        assertEquals(2, batch.getTotal());
+        assertEquals(0, batch.getFoundCount());
+        assertEquals(2, batch.getMissingCount());
+        assertEquals(false, batch.getItems().get(1).isFound());
+        assertEquals(Boolean.TRUE, batch.getItems().get(1).getError());
     }
 
     @Test
@@ -92,10 +91,10 @@ class ExpressUnitTest {
         when(expressMapper.selectExpressByBillNo(anyString(), any(RowBounds.class)))
                 .thenReturn(Arrays.asList(first, second));
 
-        Map<String, Object> result = service.query("WL-001", null);
-        assertEquals(Boolean.FALSE, result.get("found"));
-        assertEquals(Boolean.TRUE, result.get("ambiguous"));
-        assertEquals(2, ((List<?>) result.get("candidates")).size());
+        ExpressDossierVO result = service.query("WL-001", null);
+        assertEquals(false, result.isFound());
+        assertEquals(true, result.isAmbiguous());
+        assertEquals(2, result.getCandidates().size());
     }
 
     @Test
@@ -123,10 +122,9 @@ class ExpressUnitTest {
         when(sharedMapper.selectSubEntries(any(), any(RowBounds.class)))
                 .thenReturn(Arrays.asList(boxOne, boxTwo));
 
-        Map<String, Object> batch = service.queryBatch("WL-100");
-        assertEquals(1, ((Number) batch.get("foundCount")).intValue());
-        Map<?, ?> totals = (Map<?, ?>) batch.get("totals");
-        assertEquals(2L, ((Number) totals.get("entryCount")).longValue());
-        assertEquals(2L, ((Number) totals.get("boxCount")).longValue());
+        BatchResultVO batch = service.queryBatch("WL-100");
+        assertEquals(1, batch.getFoundCount());
+        assertEquals(2L, batch.getTotals().getEntryCount());
+        assertEquals(2L, batch.getTotals().getBoxCount());
     }
 }
