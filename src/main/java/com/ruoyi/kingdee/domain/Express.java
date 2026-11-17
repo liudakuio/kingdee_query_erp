@@ -65,7 +65,7 @@ public class Express {
     /** 修改时间 */
     private String fmodifytime;
     /** 审核人 */
-    private Object vauditorid;
+    private Object fauditorid;
     /** 审核日期 */
-    private String frauddate;
+    private String fauditdate;
 }
