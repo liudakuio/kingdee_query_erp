@@ -20,12 +20,35 @@ spring:
       # 箱号信息修正上传的 Excel 可能较大，放宽 Spring Boot 默认的 1MB 限制
       max-file-size: 20MB
       max-request-size: 50MB
+  datasource:
+    dynamic:
+      # 默认数据源：收货单主库；业务 Service 通过 @DS 切换到 vehicleplan
+      primary: receive
+      # 严格模式：@DS 指定了不存在的数据源时直接报错，避免静默走默认库
+      strict: true
+      datasource:
+        # 默认空库，真实连接由 application-demo.yml / application-kingdee.yml 覆盖
+        receive:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:kingdee-default;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+          username: sa
+          password: ""
+        vehicleplan:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:vehicleplan;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+          username: sa
+          password: ""
+          hikari:
+            maximum-pool-size: 3
 
-mybatis:
-  mapper-locations: classpath*:mapper/receive/*.xml
+# MyBatis-Plus 统一加载两个业务域的 Mapper XML
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     # 结果集映射为 entity 时，值为 NULL 的列也调用 setter，保证字段状态一致
     call-setters-on-nulls: true
+    # 现有实体字段名就是金蝶 snake_case 列名，禁用驼峰映射，避免 fk_usp_sendboxno 等字段映射失败
+    map-underscore-to-camel-case: false
 
 kingdee:
   query:
@@ -37,14 +60,3 @@ kingdee:
     in-clause-batch-size: 500
     # 单次批量查询/导出最多允许的单号数量
     max-batch-bills: 20
-  vehicleplan:
-    # 采购车辆计划数据库（独立数据源，与收货单主库不同）
-    # 这里默认指向内置 H2 空库，保证任何 profile 都能启动；
-    # 真实 PostgreSQL 连接写在本地 application-kingdee.yml（该文件不纳入版本控制）
-    datasource:
-      driver-class-name: org.h2.Driver
-      url: jdbc:h2:mem:vehicleplan;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-      username: sa
-      password: ""
-      hikari:
-        maximum-pool-size: 3

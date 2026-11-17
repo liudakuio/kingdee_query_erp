@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.constant.PurReceiveSchema;
 import com.ruoyi.kingdee.domain.CgEntryAttachment;
@@ -52,6 +55,7 @@ import java.util.Map;
  * <p>查询结果全部使用 VO；每行数据库数据仍由 domain 实体承载，
  * 避免一对多 JOIN 造成明细行重复展开。</p>
  */
+@DS("receive")
 @Service
 public class PurReceiveService {
 
@@ -93,7 +97,11 @@ public class PurReceiveService {
         }
         BillNos.validate(value);
         List<PurRecBill> rows = QuerySupport.safe(PurReceiveSchema.BILL,
-                () -> mapper.selectBillsByBillNoFuzzy("%" + value + "%", bounds(properties.getMaxCandidates())),
+                () -> mapper.selectPage(
+                        new Page<PurRecBill>(1, properties.getMaxCandidates(), false),
+                        new QueryWrapper<PurRecBill>()
+                                .apply("UPPER(fbillno) LIKE UPPER({0})", "%" + value + "%")
+                                .orderByAsc("fbillno")).getRecords(),
                 warnings, log);
         return candidatesFromRows(rows);
     }
@@ -146,8 +154,12 @@ public class PurReceiveService {
         }
 
         List<PurRecBill> bills = fidParam != null
-                ? QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectBillsByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectBillsByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectPage(
+                        new Page<PurRecBill>(1, 1, false),
+                        new QueryWrapper<PurRecBill>().eq("fid", fidParam)).getRecords(), warnings, log)
+                : QuerySupport.safe(PurReceiveSchema.BILL, () -> mapper.selectPage(
+                        new Page<PurRecBill>(1, properties.getMaxCandidates(), false),
+                        new QueryWrapper<PurRecBill>().eq("fbillno", no)).getRecords(), warnings, log);
 
         if (bills.isEmpty()) {
             result.setMessage(fidParam != null

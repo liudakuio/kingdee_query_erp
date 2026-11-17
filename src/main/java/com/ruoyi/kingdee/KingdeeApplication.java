@@ -5,7 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
  * 金蝶采购收货单 / 采购车辆计划查询工具启动类。
- * Mapper 与数据源的绑定关系由 config 包下的 PrimaryMybatisConfig、VehiclePlanDataSourceConfig 负责。
+ * 持久层使用 MyBatis-Plus，两个数据源由 dynamic-datasource 统一管理，
+ * 具体路由由 Service 层的 @DS 注解决定。
  */
 @SpringBootApplication
 public class KingdeeApplication {

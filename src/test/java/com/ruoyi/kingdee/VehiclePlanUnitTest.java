@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.domain.ContainerEntry;
 import com.ruoyi.kingdee.domain.Subentryentity;
@@ -28,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * 采购车辆计划查询的纯逻辑测试：单号解析、批量拒绝与 summary 合计口径。
- * 断言读取强类型 VO，避免测试再依赖动态 Map key。
+ * 主表通过 MyBatis-Plus BaseMapper.selectPage 查询，子表仍使用 XML 自定义方法。
  */
 class VehiclePlanUnitTest {
 
@@ -41,6 +44,17 @@ class VehiclePlanUnitTest {
         Environment environment = mock(Environment.class);
         when(environment.getActiveProfiles()).thenReturn(new String[0]);
         service = new VehiclePlanService(mapper, new KingdeeProperties(), environment);
+        mockPage(mapper, Collections.<VehiclePlan>emptyList());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private <T> void mockPage(BaseMapper mapper, List<T> records) {
+        when(mapper.selectPage(any(Page.class), any(QueryWrapper.class))).thenAnswer(invocation -> {
+            Page page = invocation.getArgument(0);
+            page.setRecords(records);
+            page.setTotal(records.size());
+            return page;
+        });
     }
 
     @Test
@@ -71,7 +85,6 @@ class VehiclePlanUnitTest {
     void queryBatchShouldMarkIllegalBillButKeepOthers() {
         BatchResultVO batch = service.queryBatch("CL-001,A'B");
         assertEquals(2, batch.getTotal());
-        // CL-001 未命中（mock 未返回数据），A'B 非法字符被标记为 error
         assertEquals(0, batch.getFoundCount());
         assertEquals(2, batch.getMissingCount());
         assertEquals(false, batch.getItems().get(0).isFound());
@@ -85,8 +98,7 @@ class VehiclePlanUnitTest {
         plan.setFid(1001L);
         plan.setFbillno("CL-001");
         plan.setFbillstatus("C");
-        when(mapper.selectPlansByBillNo(anyString(), any(RowBounds.class)))
-                .thenReturn(Collections.singletonList(plan));
+        mockPage(mapper, Collections.singletonList(plan));
 
         ContainerEntry first = new ContainerEntry();
         first.setFentryid(2001L);

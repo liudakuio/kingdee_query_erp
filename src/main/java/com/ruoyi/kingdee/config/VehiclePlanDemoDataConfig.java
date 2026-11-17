@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.config;
 
+import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -24,11 +25,18 @@ public class VehiclePlanDemoDataConfig {
     /** 脚本统一按 UTF-8 读取，避免平台默认编码导致中文乱码 */
     private static final String SCRIPT_ENCODING = "UTF-8";
 
+    private final DataSource dataSource;
+
+    public VehiclePlanDemoDataConfig(@Qualifier("dataSource") DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
     @Bean
-    public InitializingBean vehiclePlanDemoDataInitializer(
-            @Qualifier("vehiclePlanDataSource") DataSource dataSource) {
+    public InitializingBean vehiclePlanDemoDataInitializer() {
         return () -> {
-            try (Connection connection = dataSource.getConnection()) {
+            // dynamic-datasource 的 dataSource() Bean 声明类型为 DataSource，这里按路由实现取命名数据源
+            DataSource vehiclePlanDataSource = ((DynamicRoutingDataSource) dataSource).getDataSource("vehicleplan");
+            try (Connection connection = vehiclePlanDataSource.getConnection()) {
                 ScriptUtils.executeSqlScript(connection, script("db/vehicleplan-schema.sql"));
                 ScriptUtils.executeSqlScript(connection, script("db/vehicleplan-data.sql"));
             } catch (Exception e) {

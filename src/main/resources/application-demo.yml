@@ -1,11 +1,24 @@
 spring:
   datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:kingdee;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
-    username: sa
-    password: ""
+    dynamic:
+      primary: receive
+      strict: true
+      datasource:
+        receive:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:kingdee;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+          username: sa
+          password: ""
+        vehicleplan:
+          driver-class-name: org.h2.Driver
+          url: jdbc:h2:mem:vehicleplan;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+          username: sa
+          password: ""
+          hikari:
+            maximum-pool-size: 3
   sql:
     init:
+      # 收货单主库初始化演示表与数据；车辆计划库由 VehiclePlanDemoDataConfig 初始化
       mode: always
       encoding: UTF-8
       schema-locations: classpath:db/schema.sql

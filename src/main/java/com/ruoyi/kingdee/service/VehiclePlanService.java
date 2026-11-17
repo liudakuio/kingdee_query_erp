@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.constant.VehiclePlanSchema;
 import com.ruoyi.kingdee.domain.ContainerEntry;
@@ -42,6 +45,7 @@ import java.util.Map;
  *
  * <p>与物流单、收货单共用 DossierAssembler / QuerySupport，但不共享业务 Map 协议。</p>
  */
+@DS("vehicleplan")
 @Service
 public class VehiclePlanService {
 
@@ -95,8 +99,12 @@ public class VehiclePlanService {
         }
 
         List<VehiclePlan> plans = fidParam != null
-                ? QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPlansByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPlansByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPage(
+                        new Page<VehiclePlan>(1, 1, false),
+                        new QueryWrapper<VehiclePlan>().eq("fid", fidParam)).getRecords(), warnings, log)
+                : QuerySupport.safe(VehiclePlanSchema.PLAN, () -> mapper.selectPage(
+                        new Page<VehiclePlan>(1, properties.getMaxCandidates(), false),
+                        new QueryWrapper<VehiclePlan>().eq("fbillno", no)).getRecords(), warnings, log);
 
         if (plans.isEmpty()) {
             result.setMessage(fidParam != null ? "未找到内码为 " + query.getFid() + " 的采购车辆计划" : "未找到单据编号为 " + no + " 的采购车辆计划");

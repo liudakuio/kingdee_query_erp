@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.mapper.receive;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.ruoyi.kingdee.domain.CgEntryAttachment;
 import com.ruoyi.kingdee.domain.CgShEntryAttach;
 import com.ruoyi.kingdee.domain.PurRecBill;
@@ -19,20 +20,15 @@ import org.apache.ibatis.session.RowBounds;
 import java.util.List;
 
 /**
- * 13 张表全部使用固定表名 + #{} 绑定参数，不做任何表名/列名拼接。
- * 每张表返回对应的 entity，一行一个对象，不再返回 Map。
- * 一张明细可能对应多条箱唛/附件，因此各表分开查询后在 Service 层按内码组装，避免一对多 JOIN 造成行数膨胀。
+ * 采购收货单查询 Mapper。
+ *
+ * <p>主表使用 MyBatis-Plus {@link BaseMapper} 提供单表查询，Service 通过 QueryWrapper 构造条件；
+ * 其余子表保留固定 SQL + #{} 绑定的 XML 查询，避免一对多 JOIN 造成明细行膨胀。</p>
  *
  * <p>fid/ids 保留 Object/List&lt;Object&gt; 是 SQL 绑定边界要求：数字内码按 Long 绑定，
  * 非数字内码按 String 绑定；业务接口只见强类型 VO，不直接暴露该边界类型。</p>
  */
-public interface PurReceiveMapper {
-
-    List<PurRecBill> selectBillsByBillNo(@Param("billNo") String billNo, RowBounds rowBounds);
-
-    List<PurRecBill> selectBillsByBillNoFuzzy(@Param("pattern") String pattern, RowBounds rowBounds);
-
-    List<PurRecBill> selectBillsByFid(@Param("fid") Object fid, RowBounds rowBounds);
+public interface PurReceiveMapper extends BaseMapper<PurRecBill> {
 
     List<PurRecBillL> selectBillL(@Param("fid") Object fid, RowBounds rowBounds);
 

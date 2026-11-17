@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
@@ -10,10 +13,12 @@ import java.math.BigDecimal;
  * ER 图共 32 列，此处按业务需要保留承运、运输、地址与审计等 25 列白名单。
  */
 @Data
+@TableName("tk_usp_express")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Express {
 
     /** 主表内码 */
+    @TableId(value = "fid", type = IdType.INPUT)
     private Object fid;
     /** 单据编号 */
     private String fbillno;

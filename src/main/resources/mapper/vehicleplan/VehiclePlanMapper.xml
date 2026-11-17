@@ -5,13 +5,7 @@
     <!-- 所有表名与列名均为固定字面量，用户输入只通过 #{} 绑定，杜绝 SQL 注入 -->
     <!-- resultType 指向 domain 下的 entity，MyBatis 按列名自动映射到同名属性 -->
 
-    <select id="selectPlansByBillNo" resultType="com.ruoyi.kingdee.domain.VehiclePlan">
-        SELECT * FROM tk_usp_vehicleplan WHERE fbillno = #{billNo}
-    </select>
-
-    <select id="selectPlansByFid" resultType="com.ruoyi.kingdee.domain.VehiclePlan">
-        SELECT * FROM tk_usp_vehicleplan WHERE fid = #{fid}
-    </select>
+    <!-- 主表查询已迁移到 MyBatis-Plus BaseMapper + QueryWrapper，见 VehiclePlanService -->
 
     <select id="selectPlanTc" resultType="com.ruoyi.kingdee.domain.VehiclePlanTc">
         SELECT * FROM tk_usp_vehicleplan_tc WHERE fid = #{fid}

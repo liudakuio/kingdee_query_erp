@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.domain.ContainerEntry;
 import com.ruoyi.kingdee.domain.Express;
@@ -29,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * 采购物流单查询的纯逻辑测试：单号解析与校验、批量拆分与拒绝、summary 合计口径。
- * 不依赖真实金蝶库，Mapper 用 mock 替身；断言直接读取强类型 VO。
+ * 主表通过 MyBatis-Plus BaseMapper.selectPage 查询，子表仍使用 XML 自定义方法。
  */
 class ExpressUnitTest {
 
@@ -44,6 +47,17 @@ class ExpressUnitTest {
         Environment environment = mock(Environment.class);
         when(environment.getActiveProfiles()).thenReturn(new String[0]);
         service = new ExpressService(expressMapper, sharedMapper, new KingdeeProperties(), environment);
+        mockPage(expressMapper, Collections.<Express>emptyList());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private <T> void mockPage(BaseMapper mapper, List<T> records) {
+        when(mapper.selectPage(any(Page.class), any(QueryWrapper.class))).thenAnswer(invocation -> {
+            Page page = invocation.getArgument(0);
+            page.setRecords(records);
+            page.setTotal(records.size());
+            return page;
+        });
     }
 
     @Test
@@ -88,8 +102,7 @@ class ExpressUnitTest {
         Express second = new Express();
         second.setFid(1002L);
         second.setFbillno("WL-001");
-        when(expressMapper.selectExpressByBillNo(anyString(), any(RowBounds.class)))
-                .thenReturn(Arrays.asList(first, second));
+        mockPage(expressMapper, Arrays.asList(first, second));
 
         ExpressDossierVO result = service.query("WL-001", null);
         assertEquals(false, result.isFound());
@@ -103,8 +116,7 @@ class ExpressUnitTest {
         plan.setFid(2001L);
         plan.setFbillno("WL-100");
         plan.setFbillstatus("C");
-        when(expressMapper.selectExpressByBillNo(anyString(), any(RowBounds.class)))
-                .thenReturn(Collections.singletonList(plan));
+        mockPage(expressMapper, Collections.singletonList(plan));
 
         ContainerEntry first = new ContainerEntry();
         first.setFentryid(3001L);

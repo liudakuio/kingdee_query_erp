@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
@@ -8,10 +11,12 @@ import lombok.Data;
  * ER 图共 48 列，此处按需求只保留业务上最常用的 15 列白名单，避免主表卡片过长。
  */
 @Data
+@TableName("t_im_purrecbill")
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class PurRecBill {
 
     /** 主表内码，数字或字符串均由数据库列类型决定 */
+    @TableId(value = "fid", type = IdType.INPUT)
     private Object fid;
     /** 单据编号 */
     private String fbillno;

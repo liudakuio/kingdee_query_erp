@@ -1,5 +1,6 @@
 package com.ruoyi.kingdee.mapper.vehicleplan;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.ruoyi.kingdee.domain.ContainerEntry;
 import com.ruoyi.kingdee.domain.Subentryentity;
 import com.ruoyi.kingdee.domain.VehicleEntry;
@@ -11,17 +12,12 @@ import org.apache.ibatis.session.RowBounds;
 import java.util.List;
 
 /**
- * 采购车辆计划查询：5 张表全部使用固定表名 + #{} 绑定参数，不做任何表名/列名拼接。
- * 关联链路：主表 fid → 物料信息 fentryid → 箱件信息；主表 fid → 车辆明细。
+ * 采购车辆计划查询 Mapper。
  *
- * <p>fid/ids 保留 Object/List&lt;Object&gt; 是 SQL 绑定边界要求：数字内码按 Long 绑定，
- * 非数字内码按 String 绑定；业务层通过 RowUtils.keyParam 归一化，VO 边界统一输出 String。</p>
+ * <p>主表使用 MyBatis-Plus {@link BaseMapper}，其余 4 张表保留 XML 固定 SQL；
+ * 数据源由 Service 层的 @DS("vehicleplan") 决定，不再按包绑定。</p>
  */
-public interface VehiclePlanMapper {
-
-    List<VehiclePlan> selectPlansByBillNo(@Param("billNo") String billNo, RowBounds rowBounds);
-
-    List<VehiclePlan> selectPlansByFid(@Param("fid") Object fid, RowBounds rowBounds);
+public interface VehiclePlanMapper extends BaseMapper<VehiclePlan> {
 
     List<VehiclePlanTc> selectPlanTc(@Param("fid") Object fid, RowBounds rowBounds);
 

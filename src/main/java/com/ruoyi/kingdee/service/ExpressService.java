@@ -1,5 +1,8 @@
 package com.ruoyi.kingdee.service;
 
+import com.baomidou.dynamic.datasource.annotation.DS;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ruoyi.kingdee.config.KingdeeProperties;
 import com.ruoyi.kingdee.constant.ExpressSchema;
 import com.ruoyi.kingdee.dto.BillQuery;
@@ -43,6 +46,7 @@ import java.util.Map;
  * <p>所有对外返回均为强类型 VO；数据库行仍由 domain 实体承载，
  * 查询失败通过公共工具降级为告警，不把动态 Map 扩散到 Controller。</p>
  */
+@DS("vehicleplan")
 @Service
 public class ExpressService {
 
@@ -99,8 +103,12 @@ public class ExpressService {
         }
 
         List<Express> plans = fidParam != null
-                ? QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectExpressByFid(fidParam, bounds(1)), warnings, log)
-                : QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectExpressByBillNo(no, bounds(properties.getMaxCandidates())), warnings, log);
+                ? QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectPage(
+                        new Page<Express>(1, 1, false),
+                        new QueryWrapper<Express>().eq("fid", fidParam)).getRecords(), warnings, log)
+                : QuerySupport.safe(ExpressSchema.EXPRESS, () -> expressMapper.selectPage(
+                        new Page<Express>(1, properties.getMaxCandidates(), false),
+                        new QueryWrapper<Express>().eq("fbillno", no)).getRecords(), warnings, log);
 
         if (plans.isEmpty()) {
             result.setMessage(fidParam != null ? "未找到内码为 " + query.getFid() + " 的采购物流单" : "未找到单据编号为 " + no + " 的采购物流单");

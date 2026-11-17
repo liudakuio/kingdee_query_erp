@@ -5,19 +5,7 @@
     <!-- 所有表名与列名均为固定字面量，用户输入只通过 #{} 绑定，杜绝 SQL 注入 -->
     <!-- resultType 指向 domain 下的 entity，MyBatis 按列名自动映射到同名属性 -->
 
-    <select id="selectBillsByBillNo" resultType="com.ruoyi.kingdee.domain.PurRecBill">
-        SELECT * FROM t_im_purrecbill WHERE fbillno = #{billNo}
-    </select>
-
-    <select id="selectBillsByBillNoFuzzy" resultType="com.ruoyi.kingdee.domain.PurRecBill">
-        SELECT * FROM t_im_purrecbill
-        WHERE UPPER(fbillno) LIKE UPPER(#{pattern})
-        ORDER BY fbillno
-    </select>
-
-    <select id="selectBillsByFid" resultType="com.ruoyi.kingdee.domain.PurRecBill">
-        SELECT * FROM t_im_purrecbill WHERE fid = #{fid}
-    </select>
+    <!-- 主表查询已迁移到 MyBatis-Plus BaseMapper + QueryWrapper，见 PurReceiveService -->
 
     <select id="selectBillL" resultType="com.ruoyi.kingdee.domain.PurRecBillL">
         SELECT * FROM t_im_purrecbill_l WHERE fid = #{fid}
