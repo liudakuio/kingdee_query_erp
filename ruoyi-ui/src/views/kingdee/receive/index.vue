@@ -192,9 +192,10 @@
 </template>
 
 <script>
-import { getReceiveMeta, listReceiveBills, queryReceive, exportReceiveExcel, queryBatchReceive, exportBatchReceive, fixBoxNo } from '@/api/kingdee/receive'
+import { listReceiveBills, queryReceive, exportReceiveExcel, queryBatchReceive, exportBatchReceive, fixBoxNo } from '@/api/kingdee/receive'
 import DossierPanel from './DossierPanel.vue'
 import { mergeDossiers, SOURCE_KEY, SOURCE_LABEL } from './mergeDossier'
+import { createReceiveSchema } from '../schema'
 
 // 收货箱明细表名：修改箱号信息功能的数据来源
 const BOX_TABLE = 'tk_usp_receivingboxentry'
@@ -204,7 +205,7 @@ export default {
   components: { DossierPanel },
   data() {
     return {
-      metaInfo: { tables: [], relations: [], columnLabels: {}, tableCount: 13 },
+      metaInfo: createReceiveSchema(),
       queryParams: { billNo: '', fid: null, fuzzy: false },
       exportTable: 'all',
       exporting: false,
@@ -265,15 +266,7 @@ export default {
       return this.boxRows.length > 0
     }
   },
-  created() {
-    this.loadMeta()
-  },
   methods: {
-    loadMeta() {
-      getReceiveMeta().then(res => {
-        if (res && res.data) this.metaInfo = res.data
-      }).catch(() => {})
-    },
     openFixDialog() {
       this.fixFile = null
       this.fixFileList = []

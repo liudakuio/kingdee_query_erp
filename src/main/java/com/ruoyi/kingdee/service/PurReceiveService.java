@@ -34,7 +34,6 @@ import com.ruoyi.kingdee.vo.PurReceiveAttachVO;
 import com.ruoyi.kingdee.vo.PurReceiveDossierVO;
 import com.ruoyi.kingdee.vo.PurReceiveEntryVO;
 import com.ruoyi.kingdee.vo.PurReceiveSummaryVO;
-import com.ruoyi.kingdee.vo.SchemaMetaVO;
 import com.ruoyi.kingdee.vo.TableDefVO;
 import com.ruoyi.kingdee.vo.TableSectionVO;
 import org.apache.ibatis.session.RowBounds;
@@ -69,18 +68,6 @@ public class PurReceiveService {
         this.mapper = mapper;
         this.properties = properties;
         this.environment = environment;
-    }
-
-    /**
-     * 供前端渲染使用的表字典、字段字典、关联关系。
-     */
-    public SchemaMetaVO meta() {
-        SchemaMetaVO meta = new SchemaMetaVO();
-        meta.setTables(new ArrayList<>(PurReceiveSchema.tableVOs()));
-        meta.setRelations(PurReceiveSchema.relationVOs());
-        meta.setColumnLabels(PurReceiveSchema.columnLabels());
-        meta.setTableCount(meta.getTables().size());
-        return meta;
     }
 
     /**

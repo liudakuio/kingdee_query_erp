@@ -94,7 +94,6 @@
   </div>
 </template><script>
 import {
-  getExpressMeta,
   queryExpress,
   queryExpressBatch,
   exportExpressExcel,
@@ -102,13 +101,14 @@ import {
 } from '@/api/kingdee/express'
 import ExpressPanel from './ExpressPanel.vue'
 import { mergeDossiers, SOURCE_KEY, SOURCE_LABEL } from '../receive/mergeDossier'
+import { createExpressSchema } from '../schema'
 
 export default {
   name: 'ExpressIndex',
   components: { ExpressPanel },
   data() {
     return {
-      metaInfo: { tables: [], relations: [], columnLabels: {}, tableCount: 4 },
+      metaInfo: createExpressSchema(),
       queryParams: { billNo: '', fid: null },
       exportTable: 'all',
       exporting: false,
@@ -151,15 +151,7 @@ export default {
       return !!(this.singleDossier && this.singleDossier.meta && this.singleDossier.meta.mode === 'kingdee')
     }
   },
-  created() {
-    this.loadMeta()
-  },
   methods: {
-    loadMeta() {
-      getExpressMeta().then(res => {
-        if (res && res.data) this.metaInfo = res.data
-      }).catch(() => {})
-    },
     handleQuery() {
       const billNo = (this.queryParams.billNo || '').trim()
       if (!billNo) {

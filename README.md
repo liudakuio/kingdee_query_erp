@@ -45,7 +45,6 @@ mvn "-Dmaven.resolver.transport=wagon" spring-boot:run  # 启动，端口 8080
 
 ```powershell
 curl "http://localhost:8080/kingdee/receive/query?billNo=CGSH-20261111-0001"
-curl "http://localhost:8080/kingdee/receive/meta"
 ```
 
 演示单号：`CGSH-20261111-0001`（2 行明细 / 4 条箱唛 / 3 条附件清单 / 4 个文件）、`CGSH-20261111-0002`、`CGSH-20261110-0003`（无箱唛与附件，用于验证空子表）。
@@ -62,7 +61,7 @@ npm run serve        # http://localhost:8081 ，已代理 /kingdee → http://lo
 
 ### 3. 接入已有若依项目
 
-1. 复制 `ruoyi-ui/src/api/kingdee/receive.js`、`ruoyi-ui/src/views/kingdee/receive/`（含 `DynamicTable.vue`）到现有 `ruoyi-ui/src/` 对应目录。
+1. 复制 `ruoyi-ui/src/api/kingdee/receive.js`、`ruoyi-ui/src/views/kingdee/receive/`（含 `DynamicTable.vue`）和 `ruoyi-ui/src/views/kingdee/schema/`（字段字典）到现有 `ruoyi-ui/src/` 对应目录。
 2. **不要覆盖**已有若依的 `src/utils/request.js`、`src/router/index.js`、`src/main.js`、`src/App.vue`（这些文件仅用于本仓库独立运行）；页面使用的 `@/utils/request` 会自动指向若依原版封装。
 3. 执行 `sql/kingdee_menu.sql` 添加菜单与 `kingdee:receive:query` 权限，刷新若依前端即可在菜单中打开。
 4. 若依自带 `VUE_APP_BASE_API = '/prod-api'`，请把后端 `/kingdee/**` 加入反向代理，或把 `request.js` 的 `baseURL` 指向后端地址。
@@ -75,7 +74,6 @@ npm run serve        # http://localhost:8081 ，已代理 /kingdee → http://lo
 | GET | `/kingdee/receive/query?fid=1001` | 按主表内码精确查询（同号多单时前端让用户选择内码） |
 | GET | `/kingdee/receive/query?billNo=xxx&fuzzy=true` | 只返回模糊匹配的单据候选列表 |
 | GET | `/kingdee/receive/list?billNo=xxx` | 单号联想（输入时自动补全） |
-| GET | `/kingdee/receive/meta` | 13 张表定义、12 条关联关系、字段中文字典 |
 
 响应体：`{ "code": 200, "msg": "查询成功", "data": { found, billNo, fid, bill, tables, entries, summary, warnings, meta } }`。
 `tables` 为 13 个表分区，每个分区含 `{label, joinKey, count, columns, rows}`；`entries` 中每行含 `{row, ext, boxes, attachList, stats}`。
@@ -101,7 +99,7 @@ t_im_purrecbill.fid
 ```
 
 - **不做大 JOIN**：文档第 7 节指出一个明细可能对应多条箱唛/附件，直接 JOIN 会造成行数膨胀。实现按三个内码分表查询，再在 Java 层按内码分组组装。
-- **不推测未知字段**：文档只确认了部分字段，因此统一使用 `SELECT *` 返回动态 `Map`，前端 `DynamicTable` 按实际列名渲染；已知字段通过 `/meta` 提供中文名，其余原样展示列名。
+- **不推测未知字段**：文档只确认了部分字段，因此统一使用 `SELECT *` 返回动态 `Map`，前端 `DynamicTable` 按实际列名渲染；已知字段由前端 `schema/` 字典提供中文名，其余原样展示列名。
 - **跨库兼容**：列名统一小写、数值/时间统一转字符串、内码数字按数值绑定（PostgreSQL `int8 = varchar` 会报错）；`IN` 条件按 500 个分批以兼容 Oracle 1000 上限。
 - **降级提示**：某张表不存在、字段名不同或无权限时，该表返回空并在 `warnings` 中提示，不影响其他表查询。
 - **安全**：表名/列名均为固定字面量，用户输入只经 `#{}` 绑定；单号做字符白名单校验（拒绝引号、空格、`%` 等）；单表行数默认上限 2000，可在 `application.yml` 调整。

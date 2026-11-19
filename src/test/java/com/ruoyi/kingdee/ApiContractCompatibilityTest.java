@@ -24,26 +24,6 @@ class ApiContractCompatibilityTest {
     private MockMvc mockMvc;
 
     @Test
-    void metaShouldKeepSchemaFieldNames() throws Exception {
-        mockMvc.perform(get("/kingdee/receive/meta"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.msg").value("查询成功"))
-                .andExpect(jsonPath("$.data.tables[0].name").exists())
-                .andExpect(jsonPath("$.data.tables[0].label").exists())
-                .andExpect(jsonPath("$.data.tables[0].joinKey").exists())
-                .andExpect(jsonPath("$.data.tables[0].scope").exists())
-                .andExpect(jsonPath("$.data.relations[0].from").exists())
-                .andExpect(jsonPath("$.data.relations[0].fromKey").exists())
-                .andExpect(jsonPath("$.data.relations[0].to").exists())
-                .andExpect(jsonPath("$.data.relations[0].toKey").exists())
-                .andExpect(jsonPath("$.data.relations[0].cardinality").exists())
-                .andExpect(jsonPath("$.data.relations[0].note").exists())
-                .andExpect(jsonPath("$.data.columnLabels.fbillno").value("单据编号"))
-                .andExpect(jsonPath("$.data.tableCount").value(13));
-    }
-
-    @Test
     void foundDossierShouldKeepBusinessFieldNames() throws Exception {
         mockMvc.perform(get("/kingdee/receive/query").param("billNo", "CGSH-20261111-0001"))
                 .andExpect(status().isOk())

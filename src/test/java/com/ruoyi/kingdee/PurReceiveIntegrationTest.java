@@ -29,16 +29,6 @@ class PurReceiveIntegrationTest {
     private MockMvc mockMvc;
 
     @Test
-    void metaShouldDescribeAllThirteenTables() throws Exception {
-        mockMvc.perform(get("/kingdee/receive/meta"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.tableCount").value(13))
-                .andExpect(jsonPath("$.data.tables.length()").value(13))
-                .andExpect(jsonPath("$.data.relations.length()").value(12));
-    }
-
-    @Test
     void queryShouldReturnFullLinkedDossier() throws Exception {
         mockMvc.perform(get("/kingdee/receive/query").param("billNo", "CGSH-20261111-0001"))
                 .andExpect(status().isOk())
@@ -102,7 +92,7 @@ class PurReceiveIntegrationTest {
     }
 
     @Test
-    void fuzzyListAndMetaShouldBeReadOnly() throws Exception {
+    void fuzzyListShouldBeReadOnly() throws Exception {
         mockMvc.perform(get("/kingdee/receive/list").param("billNo", "0002"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].billNo").value("CGSH-20261111-0002"));

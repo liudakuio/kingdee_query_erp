@@ -39,12 +39,6 @@ public class PurReceiveController {
         this.objectMapper = objectMapper;
     }
 
-    /** 表字典、字段字典和 12 条关联关系，前端用于生成动态列标题。 */
-    @GetMapping("/meta")
-    public AjaxResult meta() {
-        return AjaxResult.success(service.meta());
-    }
-
     /** 单号联想 / 模糊匹配候选单据。 */
     @GetMapping("/list")
     public AjaxResult list(@ModelAttribute PurReceiveQuery query) {
@@ -66,6 +60,16 @@ public class PurReceiveController {
      */
     @GetMapping("/queryBatch")
     public AjaxResult queryBatch(@ModelAttribute BatchBillQuery query) {
+        return AjaxResult.success(service.queryBatch(query.getBillNos()));
+    }
+
+    /**
+     * 批量查询：billNos 以中英文逗号分隔，返回批次汇总对象 + items 全量单据结果。
+     * 单个单号非法或未找到只标记该项，不影响其它单号。
+     */
+    @GetMapping("/queryBatchBySHCode")
+    public AjaxResult queryBatchBySHCode(@ModelAttribute BatchBillQuery query) {
+        //根据收货通知单SHCode查询所有采购收货单编码
         return AjaxResult.success(service.queryBatch(query.getBillNos()));
     }
 

@@ -1,13 +1,5 @@
 import request from '@/utils/request'
 
-// 车辆计划元数据：表字典、关联关系、字段中文标签
-export function getVehiclePlanMeta() {
-  return request({
-    url: '/kingdee/vehicleplan/meta',
-    method: 'get'
-  })
-}
-
 // 主查询：按单据编号（或主表内码 fid）返回 5 张表的关联数据
 export function queryVehiclePlan(params) {
   return request({

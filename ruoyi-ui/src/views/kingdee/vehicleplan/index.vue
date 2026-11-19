@@ -94,7 +94,6 @@
   </div>
 </template><script>
 import {
-  getVehiclePlanMeta,
   queryVehiclePlan,
   queryVehiclePlanBatch,
   exportVehiclePlanExcel,
@@ -102,13 +101,14 @@ import {
 } from '@/api/kingdee/vehiclePlan'
 import VehiclePlanPanel from './VehiclePlanPanel.vue'
 import { mergeDossiers, SOURCE_KEY, SOURCE_LABEL } from '../receive/mergeDossier'
+import { createVehiclePlanSchema } from '../schema'
 
 export default {
   name: 'VehiclePlanIndex',
   components: { VehiclePlanPanel },
   data() {
     return {
-      metaInfo: { tables: [], relations: [], columnLabels: {}, tableCount: 5 },
+      metaInfo: createVehiclePlanSchema(),
       queryParams: { billNo: '', fid: null },
       exportTable: 'all',
       exporting: false,
@@ -151,15 +151,7 @@ export default {
       return !!(this.singleDossier && this.singleDossier.meta && this.singleDossier.meta.mode === 'kingdee')
     }
   },
-  created() {
-    this.loadMeta()
-  },
   methods: {
-    loadMeta() {
-      getVehiclePlanMeta().then(res => {
-        if (res && res.data) this.metaInfo = res.data
-      }).catch(() => {})
-    },
     handleQuery() {
       const billNo = (this.queryParams.billNo || '').trim()
       if (!billNo) {

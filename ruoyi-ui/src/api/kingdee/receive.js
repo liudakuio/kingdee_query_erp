@@ -1,13 +1,5 @@
 import request from '@/utils/request'
 
-// 表字典、字段字典、12 条关联关系
-export function getReceiveMeta() {
-  return request({
-    url: '/kingdee/receive/meta',
-    method: 'get'
-  })
-}
-
 // 单号联想 / 模糊匹配候选
 export function listReceiveBills(billNo) {
   return request({

@@ -30,12 +30,6 @@ public class VehiclePlanController {
         this.excelExportService = excelExportService;
     }
 
-    /** 表字典、关联关系与字段标签。 */
-    @GetMapping("/meta")
-    public AjaxResult meta() {
-        return AjaxResult.success(service.meta());
-    }
-
     /** 主查询：按单号（或主表内码 fid）查整张采购车辆计划的关联数据。 */
     @GetMapping("/query")
     public AjaxResult query(@ModelAttribute BillQuery query) {

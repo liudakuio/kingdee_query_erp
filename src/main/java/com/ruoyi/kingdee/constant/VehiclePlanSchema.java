@@ -1,6 +1,5 @@
 package com.ruoyi.kingdee.constant;
 
-import com.ruoyi.kingdee.vo.RelationVO;
 import com.ruoyi.kingdee.vo.TableDefVO;
 
 import java.util.ArrayList;
@@ -94,15 +93,6 @@ public final class VehiclePlanSchema {
         return TABLE_DEFS;
     }
 
-    /** 转换为业务接口使用的强类型表定义列表。 */
-    public static List<TableDefVO> tableVOs() {
-        List<TableDefVO> result = new ArrayList<>();
-        for (TableDef def : TABLE_DEFS) {
-            result.add(def.toVO());
-        }
-        return result;
-    }
-
     /** 按表名取表定义，不存在时抛出可读提示。 */
     public static TableDef tableDef(String name) {
         for (TableDef def : TABLE_DEFS) {
@@ -124,16 +114,6 @@ public final class VehiclePlanSchema {
         return relations;
     }
 
-    /** ER 图中的 4 条关联关系（业务接口使用）。 */
-    public static List<RelationVO> relationVOs() {
-        List<RelationVO> relations = new ArrayList<>();
-        addRelationVO(relations, PLAN, "fid", PLAN_TC, "fid", "ZeroOne", "主表 → 关联追踪表");
-        addRelationVO(relations, PLAN, "fid", CONTAINER_ENTRY, "fid", "OneN", "主表 → 物料信息（核心链路）");
-        addRelationVO(relations, CONTAINER_ENTRY, "fentryid", SUB_ENTRY, "fentryid", "OneN", "物料信息 → 箱件信息（一对多）");
-        addRelationVO(relations, PLAN, "fid", VEHICLE_ENTRY, "fid", "OneN", "主表 → 车辆明细（一对多）");
-        return relations;
-    }
-
     private static void addRelation(List<Map<String, Object>> relations, String from, String fromKey,
                                     String to, String toKey, String cardinality, String note) {
         Map<String, Object> item = new LinkedHashMap<>();
@@ -144,11 +124,6 @@ public final class VehiclePlanSchema {
         item.put("cardinality", cardinality);
         item.put("note", note);
         relations.add(item);
-    }
-
-    private static void addRelationVO(List<RelationVO> relations, String from, String fromKey,
-                                      String to, String toKey, String cardinality, String note) {
-        relations.add(new RelationVO(from, fromKey, to, toKey, cardinality, note));
     }
 
     /**

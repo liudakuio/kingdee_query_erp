@@ -25,7 +25,6 @@ import com.ruoyi.kingdee.vo.EntryExtVO;
 import com.ruoyi.kingdee.vo.EntryStatsVO;
 import com.ruoyi.kingdee.vo.ExpressDossierVO;
 import com.ruoyi.kingdee.vo.ExpressEntryVO;
-import com.ruoyi.kingdee.vo.SchemaMetaVO;
 import com.ruoyi.kingdee.vo.TableDefVO;
 import com.ruoyi.kingdee.vo.TableSectionVO;
 import org.apache.ibatis.session.RowBounds;
@@ -63,16 +62,6 @@ public class ExpressService {
         this.sharedMapper = sharedMapper;
         this.properties = properties;
         this.environment = environment;
-    }
-
-    /** 表字典、关联关系与字段标签，前端用于生成动态列标题。 */
-    public SchemaMetaVO meta() {
-        SchemaMetaVO meta = new SchemaMetaVO();
-        meta.setTables(new ArrayList<>(ExpressSchema.tableVOs()));
-        meta.setRelations(ExpressSchema.relationVOs());
-        meta.setColumnLabels(ExpressSchema.columnLabels());
-        meta.setTableCount(meta.getTables().size());
-        return meta;
     }
 
     /** 兼容内部调用的简化入口；Controller 统一使用 {@link #query(BillQuery)}。 */

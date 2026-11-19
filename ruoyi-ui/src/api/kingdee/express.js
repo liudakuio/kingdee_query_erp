@@ -1,13 +1,5 @@
 import request from '@/utils/request'
 
-// 采购物流单元数据：表字典、关联关系、字段中文标签
-export function getExpressMeta() {
-  return request({
-    url: '/kingdee/express/meta',
-    method: 'get'
-  })
-}
-
 // 主查询：按单据编号（或主表内码 fid）返回 4 张表的关联数据
 export function queryExpress(params) {
   return request({
