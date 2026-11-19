@@ -53,4 +53,7 @@ public interface PurReceiveMapper extends BaseMapper<PurRecBill> {
     List<CgShEntryAttach> selectAttachList(@Param("ids") List<Object> ids, RowBounds rowBounds);
 
     List<CgEntryAttachment> selectAttachFiles(@Param("ids") List<Object> ids, RowBounds rowBounds);
+
+    /** 按 Excel K 列编码（单据编号）查询一条箱号信息，用于回填 fentryid。 */
+    ReceivingBoxEntry selectByCode(@Param("code") String code);
 }

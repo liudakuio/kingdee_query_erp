@@ -45,10 +45,10 @@ export function queryBatchReceive(params) {
   })
 }
 
-// 修改箱号信息：上传含 fentryid 列的正确箱号信息 Excel + 当前箱号信息行（JSON 字符串），返回处理结果 Excel
+// 通用 Excel 处理：上传 Excel，后端按固定 11 列处理并返回结果文件
 export function fixBoxNo(formData) {
   return request({
-    url: '/kingdee/receive/fixBoxNo',
+    url: '/kingdee/tool/excel/process',
     method: 'post',
     data: formData,
     responseType: 'blob',

@@ -55,7 +55,7 @@ import java.util.Map;
  * <p>查询结果全部使用 VO；每行数据库数据仍由 domain 实体承载，
  * 避免一对多 JOIN 造成明细行重复展开。</p>
  */
-@DS("receive")
+@DS("scm")
 @Service
 public class PurReceiveService {
 

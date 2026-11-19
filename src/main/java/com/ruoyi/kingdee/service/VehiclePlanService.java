@@ -45,7 +45,7 @@ import java.util.Map;
  *
  * <p>与物流单、收货单共用 DossierAssembler / QuerySupport，但不共享业务 Map 协议。</p>
  */
-@DS("vehicleplan")
+@DS("de")
 @Service
 public class VehiclePlanService {
 

@@ -52,6 +52,12 @@
             <artifactId>poi-ooxml</artifactId>
             <version>5.2.3</version>
         </dependency>
+        <!-- 通用 Excel 处理接口：按固定列索引读写Excel，兼容 JDK8 -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>easyexcel</artifactId>
+            <version>3.3.4</version>
+        </dependency>
 
         <!-- 演示库：默认 demo 档案使用，切换真实金蝶库时不需要移除 -->
         <dependency>

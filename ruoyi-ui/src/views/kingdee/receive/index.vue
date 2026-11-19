@@ -39,7 +39,6 @@
           <el-button
             type="warning"
             icon="el-icon-edit-outline"
-            :disabled="!hasBoxRows"
             @click="openFixDialog"
           >修改箱号信息</el-button>
         </el-form-item>
@@ -162,7 +161,7 @@
         type="info"
         :closable="false"
         show-icon
-        title="请上传正确的箱号信息 Excel（需包含 fentryid 列，以及箱号、集装箱号等箱件字段）。后端按 fentryid 与当前查询到的箱号信息匹配，处理完成后直接下载结果 Excel。"
+        title="请上传按固定 11 列模板整理的 Excel。后端按 K 列（表头 updateSql）中的编码匹配箱号信息，回填 fentryid、fdetailid 和 fseq，处理完成后下载结果 Excel。"
         class="inner-tip"
       />
       <el-upload
@@ -180,7 +179,7 @@
         <div class="el-upload__text">把箱号信息 Excel 拖到此处，或<em>点击选择</em></div>
       </el-upload>
       <div class="fix-summary">
-        当前可处理箱号信息 {{ boxRows.length }} 行{{ batchResults.length ? '（批量查询合并结果）' : '' }}
+        当前查询结果 {{ boxRows.length }} 行箱号信息；处理结果由上传文件行数决定
       </div>
       <div slot="footer">
         <el-button @click="fixDialogVisible = false">取消</el-button>
@@ -290,20 +289,14 @@ export default {
     },
     submitFixBoxNo() {
       if (!this.fixFile) return
-      // 批量模式下剔除合并视图插入的来源单据列，只提交真实箱号信息字段
-      const rows = this.boxRows.map(row => {
-        const copy = Object.assign({}, row)
-        delete copy[SOURCE_KEY]
-        return copy
-      })
+      // 新接口只接收上传文件；insertFentryIds / updateFentryIds 暂不传，由后端默认空字符串兼容
       const formData = new FormData()
       formData.append('file', this.fixFile)
-      formData.append('rows', JSON.stringify(rows))
       this.fixUploading = true
       fixBoxNo(formData).then(res => {
         this.fixUploading = false
         this.fixDialogVisible = false
-        const billNo = (this.dossier && this.dossier.billNo) || '批量'
+        const billNo = (this.currentDossier && this.currentDossier.billNo) || '批量'
         this.saveExcelBlob(res, '箱号信息修正结果_' + billNo + '.xlsx')
       }).catch(error => {
         this.fixUploading = false

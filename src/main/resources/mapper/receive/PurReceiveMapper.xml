@@ -67,4 +67,16 @@
         <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
     </select>
 
+    <!-- 通用 Excel 处理：外部实现的 selectByCode 实际按单据编号 fbillno 过滤，
+         这里保留该语义，并加 ORDER BY / LIMIT 1 避免多行命中时 MyBatis 抛 TooManyResultsException -->
+    <select id="selectByCode" resultType="com.ruoyi.kingdee.domain.ReceivingBoxEntry">
+        SELECT b.*
+        FROM t_im_purrecbill p
+        JOIN t_im_purrecbillentry e ON p.fid = e.fid
+        JOIN tk_usp_receivingboxentry b ON e.fentryid = b.fentryid
+        WHERE p.fbillno = #{code}
+        ORDER BY b.fentryid, b.fseq
+        LIMIT 1
+    </select>
+
 </mapper>
